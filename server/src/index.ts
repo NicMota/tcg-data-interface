@@ -1,8 +1,8 @@
 import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
-import 'dotenv/config'
-const apikey = process.env.tcgapikey;
+import { load_cards_data } from './model.js';
+
 const app = express();
 const PORT = 8000;
 
@@ -10,9 +10,10 @@ var corscfg = {
     origin: '*',
 }
 const axs = axios.create({
-  baseURL: 'https://api.tcgapis.com/api/v1',
+  baseURL: 'https://api.scryfall.com',
   headers:  {
-    'X-Api-Key':apikey,
+    'User-Agent':'TCGAnal/1.0',
+    'Accept':'*/*',
     'Content-Type':'application/json',
   }
 })
@@ -32,7 +33,8 @@ app.get('/cards',async (req,res)=>
 
 
 
-app.listen(PORT,()=>
-{
+app.listen(PORT,async ()=>
+{   
+    await load_cards_data();
     console.log('running on port ' + PORT); 
 })
