@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './App.css'
-import axios from 'axios'
+import Home from './pages/Home'
+import { Charts } from './pages/Charts'
+import { CardInfo } from './pages/CardInfo'
+
 
 
 
@@ -8,28 +11,17 @@ import axios from 'axios'
 
 function App() {
 
-  const [cards,setCards] = useState([])
   
-  useEffect(()=>
-  {
-    var fetchCards = async ()=>{
-      const {data} = await axios.get('http://localhost:8000/cards');
-      setCards([data.cards]);
-      console.log(data.cards)
-    }
 
-    fetchCards();
-  },[])
-
-
+  //resolver cartas que não tem imagem, (face_card)
   return (
-    <div className='flex h-screen w-screen bg-green-100'>
-      {cards.map((c,i)=>
-        (<div key ={i} className='block text-black w-50 h-50 bg-white'>
-          pinto
-        </div>)
-      )}
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<Home/>}/>
+        <Route path='/charts' element={<Charts/>} />
+        <Route path='/card/:card_id' element={<CardInfo/>}/>
+      </Routes>
+    </BrowserRouter>
   )
 }
 
