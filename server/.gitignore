@@ -1,3 +1,5 @@
 .env
 src/default_cards.json
 node_modules
+
+/generated/prisma

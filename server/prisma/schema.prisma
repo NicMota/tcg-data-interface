@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model card_prices {
+  id         Int       @id @default(autoincrement())
+  card_id    String?
+  price_usd  Decimal?  @db.Decimal(10, 4)
+  date       DateTime  @db.Date
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  cards      cards?    @relation(fields: [card_id], references: [card_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([card_id, date])
+}
+
+model cards {
+  id               Int           @id @default(autoincrement())
+  card_id          String?       @unique
+  name             String?
+  released_at      DateTime?     @db.Date
+  scryfall_uri     String?
+  mana_cost        String?
+  type_line        String?
+  colors           String[]
+  color_identity   String[]
+  foil             Boolean?
+  nonfoil          Boolean?
+  set_code         String?
+  set_name         String?
+  set_type         String?
+  set_uri          String?
+  set_search_uri   String?
+  scryfall_set_uri String?
+  rarity           String?
+  prices           Json?
+  related_uri      String?
+  image_uris       Json?
+  card_prices      card_prices[]
+}
