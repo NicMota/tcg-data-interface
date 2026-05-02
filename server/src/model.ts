@@ -159,33 +159,26 @@ export async function update_prices() {
 
 
 
-export async function filter_cards(filter: SearchFilters) {
+
+export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}) {
   try {
-    return await prisma.cards.findMany({
-      where: {
-        name: filter.name
-          ? { contains: filter.name, mode: 'insensitive' }
-          : undefined,
+    const where : any = {};
+    if(filter.name)
+    {
+      where.name = {contains:filter.name,mode:'insensitive'}
+    }
+    if(filter.foil)
+    {
+      where.foil = filter.foil;
+    }
 
-        rarity: filter.rarity || undefined,
-        foil: filter.foil ?? undefined,
 
-        prices: filter.price
-          ? { lte: filter.price }
-          : undefined
-      }
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-export async function get_cards(page = 1, limit = 20) {
-  try {
     const data = await prisma.cards.findMany({
+      where,
       skip: (page - 1) * limit,
       take: limit
     });
+
 
     const total = await prisma.cards.count();
 

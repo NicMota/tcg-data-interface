@@ -2,16 +2,21 @@ import axios from "axios";
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom";
 import { CardChart } from "../components/CardChart";
+import axs from "../axios";
 
 
 export function CardInfo(){
+    
+   
 
     const {card_id} = useParams();
     const [card,setCard] = useState<any>({});
     const [priceData,setPriceData] = useState<any>({});
+   
+
     useEffect(()=>{
         async function fetchData(){
-            const {data} = await axios.get(`http://localhost:8000/cards/${card_id}`);
+            const {data} = await axs.get(`/cards/${card_id}`);
             console.log(data);
             setCard(data.card_info);
             const price_data = {
@@ -19,8 +24,9 @@ export function CardInfo(){
                 dates:[]
             }
             data.prices.forEach(e => {
+                
                 price_data.prices.push(e.price_usd);
-                price_data.dates.push(e.date);
+                price_data.dates.push(new Date(e.date).toLocaleDateString() );
             });
             setPriceData(price_data);
         }
@@ -28,6 +34,7 @@ export function CardInfo(){
     },[]);
 
     return(
+        
          <div className='flex flex-col flex-1 bg-blue-200 h-screen'>
             <div className='w-screen flex bg-black h-24'>
                 <h1 className='my-auto p-4 text-white text-2xl font-thin tracking-widest italic font-serif'>MAGIC TCG TRACKER</h1>

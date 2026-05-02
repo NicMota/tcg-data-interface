@@ -12,7 +12,7 @@ import { CardInfo } from './pages/CardInfo'
 function App() {
 
   
-
+  const server_url = import.meta.env.SERVER_URL;
   //resolver cartas que não tem imagem, (face_card)
   return (
     <BrowserRouter>

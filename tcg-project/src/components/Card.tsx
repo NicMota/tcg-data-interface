@@ -40,6 +40,9 @@ export function Card({c})
                   <p className="">
                     {c.mana_cost}
                   </p>
+                  <p>
+                    {c.foil ? 'foil' : 'not foil'}
+                  </p>
                   <p className="m-5">
                     SET: {c.set_name}
                   </p>
