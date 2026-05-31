@@ -11,7 +11,7 @@ router.get('/cards',async (req,res)=>
   const limit = Number(req.query.limit);
   const filter : SearchFilters = search_filter.parse(req.query);
 
-  console.log({page,limit});
+
   const data = await get_cards(page,limit,filter);
   res.send(data);
 })
@@ -32,5 +32,6 @@ router.get('/cards/:card_id', async (req, res)=>
 
   res.send(data);
 })
+
 
 export default router;

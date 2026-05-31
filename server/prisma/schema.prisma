@@ -37,7 +37,7 @@ model cards {
   scryfall_set_uri String?
   rarity           String?
   prices           Json?
-  related_uri      String?
+  related_uri      Json?
   image_uris       Json?
   card_prices      card_prices[]
 }

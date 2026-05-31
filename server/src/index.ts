@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import router from './routes.js';
-import { update_prices } from './model.js';
+import { load_cards_data, update_prices } from './model.js';
 
 
 const app = express();
@@ -19,6 +19,7 @@ app.use(router);
 
 app.listen(PORT,"0.0.0.0",async ()=>
 {   
-  // await update_prices(); 
+  //await update_prices()
+
   console.log('running on port ' + PORT); 
 })
