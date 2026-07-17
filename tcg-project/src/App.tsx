@@ -3,6 +3,9 @@ import './App.css'
 import Home from './pages/Home'
 import { Charts } from './pages/Charts'
 import { CardInfo } from './pages/CardInfo'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Landing from './pages/Landing'
 
 
 
@@ -17,9 +20,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<Home/>}/>
+        <Route path='/' element={<Landing/>}/>
+        <Route path='cards' element={<Home/>} />
         <Route path='/charts' element={<Charts/>} />
         <Route path='/card/:card_id' element={<CardInfo/>}/>
+        <Route path='/login' element={<Login/>} />
+        <Route path='/register' element={<Register/>} />
       </Routes>
     </BrowserRouter>
   )
