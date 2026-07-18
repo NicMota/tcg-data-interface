@@ -36,8 +36,8 @@ export function Card({ c }) {
 
     const isPositive = diff >= 0;
 
-    return (
-
+    return (    
+        
         <div
             className="card-root group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer"
             style={{

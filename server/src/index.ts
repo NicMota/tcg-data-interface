@@ -6,6 +6,7 @@ import { load_cards_data, update_prices } from './model.js';
 
 
 const app = express();
+app.use(express.json())
 const PORT = 8000;
 
 var corscfg = {

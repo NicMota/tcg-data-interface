@@ -5,17 +5,12 @@ import { fileURLToPath } from 'url';
 import axios from 'axios';
 import { search_filter, SearchFilters } from './utils.js';
 import "dotenv/config";
-import { PrismaPg } from '@prisma/adapter-pg';
-import {PrismaClient} from '@prisma/client'
+import prisma from './db/db.js';
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/stream-array.js';
 import chain from 'stream-chain';
 
 
-const connectionString = `${process.env.DATABASE_URL}`;
-
-const adapter = new PrismaPg({connectionString});
-const prisma = new PrismaClient({adapter});
 
 
 /* ideia: criar uma rotina,

@@ -16,6 +16,16 @@ model card_prices {
 
   @@unique([card_id, date])
 }
+model User{
+  id  String @id @default(uuid())
+  createdAt  DateTime @default(now())
+  email String @unique
+  name String 
+  password String
+  isMod Boolean @default(false)
+  isAdmin Boolean @default(false)
+  emailConfirmed Boolean @default(false)
+}
 
 model cards {
   id               Int           @id @default(autoincrement())

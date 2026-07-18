@@ -3,7 +3,8 @@ const router = express.Router();
 import { load_cards_data, get_cards, update_prices, get_price, get_card } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
-
+import { validJwt } from './middleware.js';
+import { login, register } from './auth.js';
 router.get('/cards',async (req,res)=>
 {   
 
@@ -32,6 +33,27 @@ router.get('/cards/:card_id', async (req, res)=>
 
   res.send(data);
 })
+
+router.post('/login', async (req, res)=>{
+  const {email,password} = req.body;
+  const token = await login(email,password);
+  req.headers["authorization"] = "Bearer "+token;
+  res.status(200).send("authenticated " + token);
+
+  
+})
+
+router.post('/register', async (req, res)=>
+{
+  const {email,name,password} = req.body;
+  const result = await register({email,name,password});
+  if(result)
+    res.status(200).send("successfully registered");
+  else 
+    res.status(404).send("error on register");
+
+
+});
 
 
 export default router;
