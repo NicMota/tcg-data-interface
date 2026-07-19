@@ -9,8 +9,13 @@ interface User {
 }
 const secret = process.env.JWT_SECRET;
 
+
+
 export async function login(email: string, password: string) {
     try {
+        if (!secret) {
+            throw new Error("JWT_SECRET environment variable is not defined");
+        }
         const user = await prisma.user.findUnique({
             where: { email },
         });
@@ -30,7 +35,7 @@ export async function login(email: string, password: string) {
                 id: user.id,
                 email: user.email,
             },
-            process.env.JWT_SECRET!,
+            secret,
             {
                 expiresIn: "8h",
             }
@@ -57,4 +62,19 @@ export async function register(user : User)
         console.error(error);
         throw error;
     }
+}
+
+async function me(id : string){
+    const user = await prisma.user.findUnique({
+        where: {
+            id: id
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true
+        }
+    });
+
+    return user;
 }

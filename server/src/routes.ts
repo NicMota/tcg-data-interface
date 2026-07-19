@@ -38,11 +38,14 @@ router.post('/login', async (req, res)=>{
   const {email,password} = req.body;
   const token = await login(email,password);
   req.headers["authorization"] = "Bearer "+token;
-  res.status(200).send("authenticated " + token);
+  res.status(200).send("authenticated");
 
   
 })
 
+router.post('/me', async (req, res)=>{
+  
+})
 router.post('/register', async (req, res)=>
 {
   const {email,name,password} = req.body;
