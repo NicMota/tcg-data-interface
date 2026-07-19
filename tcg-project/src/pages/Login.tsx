@@ -249,7 +249,7 @@ function Login() {
                     <p style={{ fontSize: "12px", color: "#6b6578", textAlign: "center" }}>
                         New to the archives?{" "}
                         <Link
-                            to="/signup"
+                            to="/register"
                             style={{ color: "#d4af37", fontWeight: 600, textDecoration: "none" }}
                         >
                             Create an account
