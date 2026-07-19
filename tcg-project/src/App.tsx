@@ -6,28 +6,35 @@ import { CardInfo } from './pages/CardInfo'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
-
-
-
-
+import { AuthProvider } from './context/AuthContext'
+import { LanguageProvider } from './context/LanguageContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 
 function App() {
 
-  
-  const server_url = import.meta.env.SERVER_URL;
   //resolver cartas que não tem imagem, (face_card)
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path='/' element={<Landing/>}/>
-        <Route path='cards' element={<Home/>} />
-        <Route path='/charts' element={<Charts/>} />
-        <Route path='/card/:card_id' element={<CardInfo/>}/>
-        <Route path='/login' element={<Login/>} />
-        <Route path='/register' element={<Register/>} />
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path='/' element={<Landing/>}/>
+            <Route path='/login' element={<Login/>} />
+            <Route path='/register' element={<Register/>} />
+            <Route path='/cards' element={
+              <ProtectedRoute><Home/></ProtectedRoute>
+            } />
+            <Route path='/charts' element={
+              <ProtectedRoute><Charts/></ProtectedRoute>
+            } />
+            <Route path='/card/:card_id' element={
+              <ProtectedRoute><CardInfo/></ProtectedRoute>
+            } />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </LanguageProvider>
   )
 }
 

@@ -1,9 +1,13 @@
 import { useState, type FormEvent, type CSSProperties } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axs from "../axios";
+import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 function Register() {
     const navigate = useNavigate();
+    const { register } = useAuth();
+    const { t } = useLanguage();
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -17,29 +21,27 @@ function Register() {
         setError("");
 
         if (!name || !email || !password || !confirmPassword) {
-            setError("Fill in every field to create your account.");
+            setError(t("register.errorEmpty"));
             return;
         }
 
         if (password.length < 8) {
-            setError("Password must be at least 8 characters.");
+            setError(t("register.errorPasswordLength"));
             return;
         }
 
         if (password !== confirmPassword) {
-            setError("Passwords don't match.");
+            setError(t("register.errorMismatch"));
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const { data } = await axs.post("/register", { name, email, password });
-
-            sessionStorage.setItem("tcg_token", data.token);
-            navigate("/");
+            await register(name, email, password, true);
+            navigate("/cards", { replace: true });
         } catch (err: any) {
             console.log(err);
-            setError(err?.response?.data?.message ?? "Couldn't create your account. Try again.");
+            setError(err?.response?.data?.message ?? t("register.errorGeneric"));
         } finally {
             setIsSubmitting(false);
         }
@@ -74,6 +76,10 @@ function Register() {
                     borderRadius: "50%",
                     background: "radial-gradient(circle, rgba(100,60,180,0.04) 0%, transparent 70%)",
                 }} />
+            </div>
+
+            <div className="fixed top-6 right-6" style={{ zIndex: 2 }}>
+                <LanguageSwitcher />
             </div>
 
             <div className="relative w-full max-w-sm" style={{ zIndex: 1 }}>
@@ -127,19 +133,19 @@ function Register() {
                         textAlign: "center",
                         marginBottom: "22px",
                     }}>
-                        Join the archives
+                        {t("register.title")}
                     </p>
 
                     <form onSubmit={handleSubmit} noValidate>
 
                         <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                            Name
+                            {t("register.nameLabel")}
                         </label>
                         <input
                             type="text"
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            placeholder="Jace Beleren"
+                            placeholder={t("register.namePlaceholder")}
                             autoComplete="name"
                             style={inputStyle}
                             onFocus={e => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)")}
@@ -147,13 +153,13 @@ function Register() {
                         />
 
                         <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                            Email
+                            {t("register.emailLabel")}
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
-                            placeholder="you@example.com"
+                            placeholder={t("register.emailPlaceholder")}
                             autoComplete="email"
                             style={inputStyle}
                             onFocus={e => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)")}
@@ -161,7 +167,7 @@ function Register() {
                         />
 
                         <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                            Password
+                            {t("register.passwordLabel")}
                         </label>
                         <input
                             type="password"
@@ -175,7 +181,7 @@ function Register() {
                         />
 
                         <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                            Confirm password
+                            {t("register.confirmLabel")}
                         </label>
                         <input
                             type="password"
@@ -224,7 +230,7 @@ function Register() {
                                 transition: "all 0.2s",
                             }}
                         >
-                            {isSubmitting ? "Creating..." : "Create account"}
+                            {isSubmitting ? t("register.submitting") : t("register.submit")}
                         </button>
                     </form>
 
@@ -235,12 +241,12 @@ function Register() {
                     }} />
 
                     <p style={{ fontSize: "12px", color: "#6b6578", textAlign: "center" }}>
-                        Already have an account?{" "}
+                        {t("register.signInPrompt")}{" "}
                         <Link
                             to="/login"
                             style={{ color: "#d4af37", fontWeight: 600, textDecoration: "none" }}
                         >
-                            Sign in
+                            {t("register.signInLink")}
                         </Link>
                     </p>
                 </div>

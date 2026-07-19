@@ -1,33 +1,39 @@
-import { NextFunction, Response } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
-import { AuthRequest } from "./interfaces";
+import { NextFunction, Request, Response } from "express";
+import jwt from 'jsonwebtoken';
 
-const secret = process.env.JWT_SECRET!;
+export interface AuthUserPayload {
+    id: string;
+    email: string;
+}
 
-export function validJwt(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-) {
-    const authHeader = req.headers.authorization;
+export interface AuthRequest extends Request {
+    user?: AuthUserPayload;
+}
 
-    if (!authHeader?.startsWith("Bearer ")) {
-        return res.sendStatus(401);
+const secret = process.env.JWT_SECRET;
+
+const validJwt = (req: AuthRequest, res: Response, next: NextFunction) => {
+
+    const authHeader = req.headers["authorization"];
+    const token = authHeader?.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : authHeader;
+
+    if (!token || !secret) {
+        res.status(403).json({ message: "Não autorizado." });
+        return;
     }
 
-    const token = authHeader.slice(7);
-
-    try {
-        const decoded = jwt.verify(token, secret);
-
-        if (typeof decoded === "string") {
-            return res.sendStatus(403);
+    jwt.verify(token, secret, (err: jwt.VerifyErrors | null, decoded: any) => {
+        if (err || !decoded) {
+            res.status(403).json({ message: "Sessão inválida ou expirada." });
+            return;
         }
 
-        req.userInfo = decoded as AuthRequest["userInfo"];
-
+        req.user = decoded as AuthUserPayload;
         next();
-    } catch {
-        return res.sendStatus(403);
-    }
+    })
+
 }
+
+export { validJwt };

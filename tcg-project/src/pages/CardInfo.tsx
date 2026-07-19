@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { CardChart } from "../components/CardChart";
 import axs from "../axios";
+import { useLanguage } from "../context/LanguageContext";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 export function CardInfo() {
 
     const { card_id } = useParams();
+    const { t } = useLanguage();
 
     const [card, setCard] = useState<any>({});
     const [priceData, setPriceData] = useState({ prices: [], dates: [] });
@@ -113,32 +116,37 @@ export function CardInfo() {
                         background: "linear-gradient(90deg, rgba(212,175,55,0.3), transparent)",
                     }} />
 
-                    <a
-                        href="/"
-                        style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            color: "#9b8c6e",
-                            fontSize: "13px",
-                            letterSpacing: "0.08em",
-                            textDecoration: "none",
-                            border: "1px solid rgba(212,175,55,0.18)",
-                            borderRadius: "10px",
-                            padding: "7px 16px",
-                            transition: "color 0.2s, border-color 0.2s",
-                        }}
-                        onMouseEnter={e => {
-                            (e.currentTarget as HTMLAnchorElement).style.color = "#d4af37";
-                            (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.45)";
-                        }}
-                        onMouseLeave={e => {
-                            (e.currentTarget as HTMLAnchorElement).style.color = "#9b8c6e";
-                            (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.18)";
-                        }}
-                    >
-                        ← Back
-                    </a>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <LanguageSwitcher />
+
+                        <Link
+                            to="/cards"
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                color: "#9b8c6e",
+                                fontSize: "13px",
+                                letterSpacing: "0.08em",
+                                textDecoration: "none",
+                                border: "1px solid rgba(212,175,55,0.18)",
+                                borderRadius: "10px",
+                                padding: "7px 16px",
+                                transition: "color 0.2s, border-color 0.2s",
+                                whiteSpace: "nowrap",
+                            }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLAnchorElement).style.color = "#d4af37";
+                                (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.45)";
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLAnchorElement).style.color = "#9b8c6e";
+                                (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.18)";
+                            }}
+                        >
+                            {t("cardInfo.back")}
+                        </Link>
+                    </div>
                 </div>
             </header>
 
@@ -148,7 +156,7 @@ export function CardInfo() {
                 {loading ? (
                     <div className="flex items-center justify-center" style={{ height: "60vh" }}>
                         <p style={{ color: "#6b6578", fontFamily: "'Cinzel', serif", letterSpacing: "0.2em" }}>
-                            Consulting the archives...
+                            {t("cardInfo.consulting")}
                         </p>
                     </div>
                 ) : (
@@ -235,7 +243,7 @@ export function CardInfo() {
                                         borderRadius: "8px",
                                         padding: "5px 12px",
                                     }}>
-                                        {card.foil ? "✦ Foil" : "Non-Foil"}
+                                        {card.foil ? t("cardInfo.foil") : t("cardInfo.nonFoil")}
                                     </span>
                                 </div>
                             </div>
@@ -262,7 +270,7 @@ export function CardInfo() {
                                         letterSpacing: "0.08em",
                                     }}
                                 >
-                                    Price History
+                                    {t("cardInfo.priceHistory")}
                                 </h3>
 
                                 {/* Live price summary */}
@@ -287,7 +295,7 @@ export function CardInfo() {
                                                 color: isPositive ? "#6ee7b7" : "#fca5a5",
                                             }}
                                         >
-                                            {isPositive ? "▲" : "▼"} ${Math.abs(priceDiff).toFixed(2)} today
+                                            {isPositive ? "▲" : "▼"} ${Math.abs(priceDiff).toFixed(2)} {t("cardInfo.today")}
                                         </p>
                                     </div>
                                 )}

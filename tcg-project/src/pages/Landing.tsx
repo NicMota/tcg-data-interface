@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-
+import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 const sampleTicker = [
     { name: "Ragavan, Nimble Pilferer", set: "MH2", price: 42.18, diff: 3.41 },
@@ -9,35 +11,16 @@ const sampleTicker = [
     { name: "Wrenn and Six", set: "MH1", price: 33.05, diff: 2.02 },
 ];
 
-const steps = [
-    {
-        title: "Search any card",
-        body: "Full price history since release — every set, every printing, no spreadsheet.",
-    },
-    {
-        title: "Compare sets & foils",
-        body: "See exactly where the foil premium sits instead of guessing from a marketplace listing.",
-    },
-    {
-        title: "Read the trend",
-        body: "24h / 7d / 30d deltas at a glance, so you know if you're buying a dip or a peak.",
-    },
-];
-
-const testimonials = [
-    {
-        quote: "Caught a reprint spike two days before it hit the usual price sites. Saved me from selling at the bottom.",
-        name: "D. Alcantara",
-        role: "Commander player & light flipper",
-    },
-    {
-        quote: "It's not fancy, but the trend charts are exactly what I check before every trade.",
-        name: "M. Okafor",
-        role: "LGS trade binder regular",
-    },
-];
+interface Step { title: string; body: string }
+interface Testimonial { quote: string; name: string; role: string }
 
 function Landing() {
+    const { isAuthenticated, logout } = useAuth();
+    const { t, tRaw } = useLanguage();
+
+    const steps = tRaw<Step[]>("landing.howItWorks");
+    const testimonials = tRaw<Testimonial[]>("landing.testimonials");
+
     return (
         <div
             style={{
@@ -71,7 +54,7 @@ function Landing() {
                     backdropFilter: "blur(20px)",
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 flex items-center gap-6" style={{ height: "72px" }}>
+                <div className="max-w-7xl mx-auto px-6 flex items-center gap-4" style={{ height: "72px" }}>
                     <div className="flex items-center gap-3 flex-shrink-0">
                         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                             <polygon points="14,2 26,9 26,19 14,26 2,19 2,9" stroke="#d4af37" strokeWidth="1.5" fill="none" opacity="0.8" />
@@ -91,21 +74,51 @@ function Landing() {
 
                     <div style={{ flex: 1 }} />
 
-                    <Link to="/login" style={{ fontSize: "13px", color: "#9b8c6e", textDecoration: "none" }}>
-                        Sign in
-                    </Link>
-                    <Link
-                        to="/register"
-                        style={{
-                            fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em",
-                            textTransform: "uppercase", fontFamily: "'Cinzel', serif",
-                            padding: "9px 16px", borderRadius: "10px",
-                            background: "linear-gradient(135deg, #d4af37, #b8960c)",
-                            color: "#080710", textDecoration: "none",
-                        }}
-                    >
-                        Start free
-                    </Link>
+                    <LanguageSwitcher />
+
+                    {isAuthenticated ? (
+                        <>
+                            <Link
+                                to="/cards"
+                                style={{
+                                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em",
+                                    textTransform: "uppercase", fontFamily: "'Cinzel', serif",
+                                    padding: "9px 16px", borderRadius: "10px",
+                                    background: "linear-gradient(135deg, #d4af37, #b8960c)",
+                                    color: "#080710", textDecoration: "none", whiteSpace: "nowrap",
+                                }}
+                            >
+                                {t("nav.enterArchives")}
+                            </Link>
+                            <button
+                                onClick={logout}
+                                style={{
+                                    fontSize: "13px", color: "#9b8c6e", background: "transparent",
+                                    border: "none", cursor: "pointer",
+                                }}
+                            >
+                                {t("nav.logout")}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Link to="/login" style={{ fontSize: "13px", color: "#9b8c6e", textDecoration: "none", whiteSpace: "nowrap" }}>
+                                {t("nav.signIn")}
+                            </Link>
+                            <Link
+                                to="/register"
+                                style={{
+                                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em",
+                                    textTransform: "uppercase", fontFamily: "'Cinzel', serif",
+                                    padding: "9px 16px", borderRadius: "10px",
+                                    background: "linear-gradient(135deg, #d4af37, #b8960c)",
+                                    color: "#080710", textDecoration: "none", whiteSpace: "nowrap",
+                                }}
+                            >
+                                {t("nav.startFree")}
+                            </Link>
+                        </>
+                    )}
                 </div>
             </header>
 
@@ -117,23 +130,21 @@ function Landing() {
                         fontSize: "12px", letterSpacing: "0.2em", color: "#9b8c6e",
                         textTransform: "uppercase", marginBottom: "18px",
                     }}>
-                        Magic: The Gathering price intelligence
+                        {t("landing.tag")}
                     </p>
                     <h2 style={{
                         fontFamily: "'Cinzel', serif", fontWeight: 700,
                         fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2,
                         maxWidth: "760px", margin: "0 auto 20px",
                     }}>
-                        You're about to trade a card whose price already moved{" "}
-                        <span style={{ color: "#d4af37" }}>— and you can't see it yet.</span>
+                        {t("landing.heroTitleBefore")}{" "}
+                        <span style={{ color: "#d4af37" }}>{t("landing.heroTitleHighlight")}</span>
                     </h2>
                     <p style={{
                         fontSize: "16px", color: "#9b8c6e", maxWidth: "560px",
                         margin: "0 auto 32px", lineHeight: 1.6,
                     }}>
-                        Magic TCG Tracker charts real price history across every card, set,
-                        and finish, so you spot the dip or the spike before your trade
-                        partner does.
+                        {t("landing.heroSubtitle")}
                     </p>
 
                     <Link
@@ -148,10 +159,10 @@ function Landing() {
                             boxShadow: "0 0 24px rgba(212,175,55,0.3)",
                         }}
                     >
-                        Start tracking free
+                        {t("landing.ctaPrimary")}
                     </Link>
                     <p style={{ fontSize: "12px", color: "#6b6578", marginTop: "10px" }}>
-                        2-minute setup · no credit card · free for your first 50 cards
+                        {t("landing.ctaSub")}
                     </p>
                 </section>
 
@@ -166,9 +177,9 @@ function Landing() {
                 >
                     <div className="flex items-center justify-between px-5 pt-4">
                         <span style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#6b6578", textTransform: "uppercase" }}>
-                            Live movers
+                            {t("landing.liveMovers")}
                         </span>
-                        <span style={{ fontSize: "11px", color: "#6b6578" }}>Updated daily</span>
+                        <span style={{ fontSize: "11px", color: "#6b6578" }}>{t("landing.updatedDaily")}</span>
                     </div>
                     <div className="flex flex-col divide-y" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
                         {sampleTicker.map((c) => {
@@ -231,13 +242,13 @@ function Landing() {
                 <section className="text-center" style={{ marginBottom: "88px" }}>
                     <div className="flex items-center justify-center gap-2" style={{ marginBottom: "8px" }}>
                         <span style={{ color: "#d4af37", fontSize: "18px" }}>★★★★☆</span>
-                        <span style={{ fontSize: "13px", color: "#9b8c6e" }}>4.3 average from early users</span>
+                        <span style={{ fontSize: "13px", color: "#9b8c6e" }}>{t("landing.ratingLabel")}</span>
                     </div>
 
                     <div className="grid gap-5 sm:grid-cols-2" style={{ marginTop: "32px" }}>
-                        {testimonials.map((t) => (
+                        {testimonials.map((tm) => (
                             <div
-                                key={t.name}
+                                key={tm.name}
                                 className="rounded-2xl p-5 text-left"
                                 style={{
                                     background: "linear-gradient(160deg, #0f0e17 0%, #1a1628 100%)",
@@ -245,10 +256,10 @@ function Landing() {
                                 }}
                             >
                                 <p style={{ fontSize: "14px", color: "#ede8d8", lineHeight: 1.6, marginBottom: "14px" }}>
-                                    "{t.quote}"
+                                    "{tm.quote}"
                                 </p>
                                 <p style={{ fontSize: "12px", color: "#9b8c6e" }}>
-                                    <span style={{ color: "#d4af37" }}>{t.name}</span> — {t.role}
+                                    <span style={{ color: "#d4af37" }}>{tm.name}</span> — {tm.role}
                                 </p>
                             </div>
                         ))}
@@ -268,10 +279,10 @@ function Landing() {
                     <h3 style={{
                         fontFamily: "'Cinzel', serif", fontSize: "24px", marginBottom: "12px",
                     }}>
-                        Know what your binder is worth — today, not last month.
+                        {t("landing.finalCtaTitle")}
                     </h3>
                     <p style={{ fontSize: "14px", color: "#9b8c6e", marginBottom: "24px" }}>
-                        Free for your first 50 cards. Upgrade only if you outgrow it.
+                        {t("landing.finalCtaSub")}
                     </p>
                     <Link
                         to="/register"
@@ -285,14 +296,14 @@ function Landing() {
                             boxShadow: "0 0 20px rgba(212,175,55,0.25)",
                         }}
                     >
-                        Start tracking free
+                        {t("landing.ctaPrimary")}
                     </Link>
                 </section>
             </main>
 
             <footer style={{ borderTop: "1px solid rgba(212,175,55,0.1)", padding: "24px 0" }}>
                 <p style={{ fontSize: "12px", color: "#52525b", textAlign: "center" }}>
-                    Magic TCG Tracker — price data for research purposes, not financial advice.
+                    {t("landing.footer")}
                 </p>
             </footer>
         </div>

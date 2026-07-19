@@ -1,8 +1,14 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import axs from '../axios';
 import { Card } from '../components/Card';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 function Home() {
+
+    const { user, logout } = useAuth();
+    const { t } = useLanguage();
 
     const [cards, setCards] = useState([]);
     const [currentPage, setCurrentPage] = useState(0);
@@ -94,7 +100,7 @@ function Home() {
                 }}
             >
                 <div
-                    className="max-w-7xl mx-auto px-6 flex items-center gap-6"
+                    className="max-w-7xl mx-auto px-6 flex items-center gap-4"
                     style={{ height: "72px" }}
                 >
                     {/* Logo */}
@@ -127,6 +133,17 @@ function Home() {
                         background: "linear-gradient(90deg, rgba(212,175,55,0.2), transparent)",
                     }} />
 
+                    {user?.name && (
+                        <span
+                            className="flex-shrink-0"
+                            style={{ fontSize: "12px", color: "#9b8c6e", whiteSpace: "nowrap" }}
+                        >
+                            {t("nav.hello", { name: user.name })}
+                        </span>
+                    )}
+
+                    <LanguageSwitcher />
+
                     {/* Item count selector */}
                     <select
                         value={itemsPerPage}
@@ -142,10 +159,27 @@ function Home() {
                             cursor: "pointer",
                         }}
                     >
-                        <option value="20">20 / page</option>
-                        <option value="30">30 / page</option>
-                        <option value="40">40 / page</option>
+                        <option value="20">{t("nav.perPage", { n: 20 })}</option>
+                        <option value="30">{t("nav.perPage", { n: 30 })}</option>
+                        <option value="40">{t("nav.perPage", { n: 40 })}</option>
                     </select>
+
+                    <button
+                        onClick={logout}
+                        className="flex-shrink-0"
+                        style={{
+                            fontSize: "12px",
+                            color: "#9b8c6e",
+                            background: "transparent",
+                            border: "1px solid rgba(212,175,55,0.18)",
+                            borderRadius: "10px",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {t("nav.logout")}
+                    </button>
                 </div>
             </header>
 
@@ -165,7 +199,7 @@ function Home() {
                             type="text"
                             value={search}
                             onChange={filterCards}
-                            placeholder="Search the archives..."
+                            placeholder={t("home.searchPlaceholder")}
                             style={{
                                 width: "100%",
                                 background: "rgba(255,255,255,0.03)",
@@ -213,7 +247,7 @@ function Home() {
                             color: foil ? "#d4af37" : "#6b6578",
                         }}
                     >
-                        ✦ Foil
+                        ✦ {t("home.foilFilter")}
                     </button>
 
                     {/* Filters toggle */}
@@ -239,7 +273,7 @@ function Home() {
                             color: showFilters ? "#d4af37" : "#9b8c6e",
                         }}
                     >
-                        ⚙ Filters {showFilters ? "▴" : "▾"}
+                        ⚙ {t("home.filters")} {showFilters ? "▴" : "▾"}
                     </button>
                 </div>
 
@@ -254,7 +288,7 @@ function Home() {
                     >
                         <div className="flex items-center gap-3">
                             <label style={{ fontSize: "12px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                                Mana Cost
+                                {t("home.manaCost")}
                             </label>
                             <input
                                 type="number"
@@ -278,11 +312,11 @@ function Home() {
                 {/* Status bar */}
                 <div className="flex items-center justify-between mb-6">
                     <p style={{ fontSize: "12px", color: "#52525b", letterSpacing: "0.05em" }}>
-                        Page {currentPage + 1} of {totalPages}
+                        {t("home.pageOf", { current: currentPage + 1, total: totalPages })}
                     </p>
                     {search && (
                         <p style={{ fontSize: "12px", color: "#9b8c6e" }}>
-                            Searching: <span style={{ color: "#d4af37" }}>"{search}"</span>
+                            {t("home.searching")} <span style={{ color: "#d4af37" }}>"{search}"</span>
                         </p>
                     )}
                 </div>
@@ -305,7 +339,7 @@ function Home() {
                             <circle cx="24" cy="24" r="3" fill="#d4af37" />
                         </svg>
                         <p style={{ color: "#52525b", fontFamily: "'Cinzel', serif", letterSpacing: "0.15em", fontSize: "14px" }}>
-                            No cards found
+                            {t("home.noCardsFound")}
                         </p>
                     </div>
                 )}
@@ -331,7 +365,7 @@ function Home() {
                             transition: "all 0.2s",
                         }}
                     >
-                        ← Prev
+                        {t("home.prev")}
                     </button>
 
                     {Array.from({ length: end - start + 1 }, (_, i) => {
@@ -381,7 +415,7 @@ function Home() {
                             transition: "all 0.2s",
                         }}
                     >
-                        Next →
+                        {t("home.next")}
                     </button>
                 </div>
 

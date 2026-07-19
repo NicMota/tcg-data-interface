@@ -1,8 +1,11 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
+import { Link } from "react-router-dom";
 
 export function Card({ c }) {
 
+    const { t } = useLanguage();
     const [price, setPrice] = useState(0);
     const [diff, setDiff] = useState(0);
 
@@ -97,7 +100,7 @@ export function Card({ c }) {
                             boxShadow: "0 0 12px rgba(212,175,55,0.5)",
                         }}
                     >
-                        ✦ FOIL
+                        {t("cardInfo.foil")}
                     </span>
                 )}
 
@@ -180,8 +183,8 @@ export function Card({ c }) {
                 </div>
 
                 {/* View button */}
-                <a
-                    href={`/card/${c.card_id}`}
+                <Link
+                    to={`/card/${c.card_id}`}
                     className="mt-2 block text-center rounded-xl py-2 text-sm font-semibold"
                     style={{
                         background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.06))",
@@ -203,8 +206,8 @@ export function Card({ c }) {
                         (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.3)";
                     }}
                 >
-                    View Card →
-                </a>
+                    {t("home.viewCard")}
+                </Link>
 
             </div>
 

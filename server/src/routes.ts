@@ -3,8 +3,9 @@ const router = express.Router();
 import { load_cards_data, get_cards, update_prices, get_price, get_card } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
-import { validJwt } from './middleware.js';
-import { login, register } from './auth.js';
+import { validJwt, AuthRequest } from './middleware.js';
+import { login, register, getUserById } from './auth.js';
+
 router.get('/cards',async (req,res)=>
 {   
 
@@ -35,27 +36,38 @@ router.get('/cards/:card_id', async (req, res)=>
 })
 
 router.post('/login', async (req, res)=>{
-  const {email,password} = req.body;
-  const token = await login(email,password);
-  req.headers["authorization"] = "Bearer "+token;
-  res.status(200).send("authenticated");
-
-  
+  try {
+    const {email,password} = req.body;
+    const result = await login(email,password);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(401).json({ message: error?.message ?? "Usuário ou senha inválidos." });
+  }
 })
 
-router.post('/me', async (req, res)=>{
-  
-})
 router.post('/register', async (req, res)=>
 {
-  const {email,name,password} = req.body;
-  const result = await register({email,name,password});
-  if(result)
-    res.status(200).send("successfully registered");
-  else 
-    res.status(404).send("error on register");
+  try {
+    const {email,name,password} = req.body;
+    const result = await register({email,name,password});
+    res.status(201).json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error?.message ?? "Erro ao criar conta." });
+  }
+});
 
-
+// Retorna os dados do usuário autenticado a partir do token enviado.
+router.get('/me', validJwt, async (req: AuthRequest, res) => {
+  try {
+    const user = await getUserById(req.user!.id);
+    if (!user) {
+      res.status(404).json({ message: "Usuário não encontrado." });
+      return;
+    }
+    res.status(200).json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao buscar usuário." });
+  }
 });
 
 

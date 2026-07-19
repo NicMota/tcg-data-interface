@@ -1,9 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import axs from "../axios";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { login } = useAuth();
+    const { t } = useLanguage();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -16,24 +21,19 @@ function Login() {
         setError("");
 
         if (!email || !password) {
-            setError("Enter your email and password to continue.");
+            setError(t("login.errorEmpty"));
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const { data } = await axs.post("/login", { email, password });
+            await login(email, password, remember);
 
-            if (remember) {
-                localStorage.setItem("tcg_token", data.token);
-            } else {
-                sessionStorage.setItem("tcg_token", data.token);
-            }
-
-            navigate("/");
+            const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? "/cards";
+            navigate(redirectTo, { replace: true });
         } catch (err: any) {
             console.log(err);
-            setError(err?.response?.data?.message ?? "Incorrect email or password.");
+            setError(err?.response?.data?.message ?? t("login.errorGeneric"));
         } finally {
             setIsSubmitting(false);
         }
@@ -68,6 +68,10 @@ function Login() {
                     borderRadius: "50%",
                     background: "radial-gradient(circle, rgba(100,60,180,0.04) 0%, transparent 70%)",
                 }} />
+            </div>
+
+            <div className="fixed top-6 right-6" style={{ zIndex: 2 }}>
+                <LanguageSwitcher />
             </div>
 
             <div className="relative w-full max-w-sm" style={{ zIndex: 1 }}>
@@ -121,19 +125,19 @@ function Login() {
                         textAlign: "center",
                         marginBottom: "22px",
                     }}>
-                        Sign in to the archives
+                        {t("login.title")}
                     </p>
 
                     <form onSubmit={handleSubmit} noValidate>
 
                         <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                            Email
+                            {t("login.emailLabel")}
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
-                            placeholder="you@example.com"
+                            placeholder={t("login.emailPlaceholder")}
                             autoComplete="email"
                             style={{
                                 width: "100%",
@@ -155,7 +159,7 @@ function Login() {
 
                         <div className="flex items-center justify-between">
                             <label style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                                Password
+                                {t("login.passwordLabel")}
                             </label>
                             <Link
                                 to="/forgot-password"
@@ -163,7 +167,7 @@ function Login() {
                                 onMouseEnter={e => (e.currentTarget.style.color = "#d4af37")}
                                 onMouseLeave={e => (e.currentTarget.style.color = "#9b8c6e")}
                             >
-                                Forgot?
+                                {t("login.forgot")}
                             </Link>
                         </div>
                         <input
@@ -197,7 +201,7 @@ function Login() {
                                 onChange={e => setRemember(e.target.checked)}
                                 style={{ accentColor: "#d4af37" }}
                             />
-                            Keep me signed in
+                            {t("login.remember")}
                         </label>
 
                         {error && (
@@ -236,7 +240,7 @@ function Login() {
                                 transition: "all 0.2s",
                             }}
                         >
-                            {isSubmitting ? "Entering..." : "Enter"}
+                            {isSubmitting ? t("login.submitting") : t("login.submit")}
                         </button>
                     </form>
 
@@ -247,12 +251,12 @@ function Login() {
                     }} />
 
                     <p style={{ fontSize: "12px", color: "#6b6578", textAlign: "center" }}>
-                        New to the archives?{" "}
+                        {t("login.signUpPrompt")}{" "}
                         <Link
                             to="/register"
                             style={{ color: "#d4af37", fontWeight: 600, textDecoration: "none" }}
                         >
-                            Create an account
+                            {t("login.signUpLink")}
                         </Link>
                     </p>
                 </div>
