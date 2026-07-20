@@ -6,6 +6,24 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
+const filterLabelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    letterSpacing: "0.08em",
+    color: "#9b8c6e",
+    textTransform: "uppercase",
+};
+
+const filterInputStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(212,175,55,0.15)",
+    borderRadius: "8px",
+    padding: "7px 12px",
+    color: "#ede8d8",
+    fontSize: "13px",
+    outline: "none",
+    fontFamily: "'DM Sans', sans-serif",
+};
+
 function Home() {
 
     const { user, logout } = useAuth();
@@ -19,6 +37,27 @@ function Home() {
     const [showFilters, setShowFilters] = useState(false);
     const [foil, setFoil] = useState<boolean | undefined>(undefined);
 
+    const [manaCost, setManaCost] = useState('');
+    const [setCode, setSetCode] = useState('');
+    const [rarity, setRarity] = useState('');
+    const [releasedFrom, setReleasedFrom] = useState('');
+    const [releasedTo, setReleasedTo] = useState('');
+    const [colors, setColors] = useState<string[]>([]);
+
+    const [sets, setSets] = useState<{ set_code: string; set_name: string }[]>([]);
+
+    useEffect(() => {
+        const fetchSets = async () => {
+            try {
+                const { data } = await axs.get('/sets');
+                setSets(data ?? []);
+            } catch (err) {
+                console.log(err);
+            }
+        };
+        fetchSets();
+    }, []);
+
     useEffect(() => {
 
         const fetchCards = async () => {
@@ -29,6 +68,12 @@ function Home() {
                     limit: itemsPerPage,
                     name: search || undefined,
                     foil: foil !== undefined ? foil : undefined,
+                    mana_cost: manaCost || undefined,
+                    set_code: setCode || undefined,
+                    rarity: rarity || undefined,
+                    released_from: releasedFrom || undefined,
+                    released_to: releasedTo || undefined,
+                    colors: colors.length ? colors.join(',') : undefined,
                 },
             });
 
@@ -38,15 +83,34 @@ function Home() {
 
         fetchCards();
 
-    }, [currentPage, itemsPerPage, search, foil]);
+    }, [currentPage, itemsPerPage, search, foil, manaCost, setCode, rarity, releasedFrom, releasedTo, colors]);
 
     useEffect(() => {
         setCurrentPage(0);
-    }, [search, foil]);
+    }, [search, foil, manaCost, setCode, rarity, releasedFrom, releasedTo, colors]);
 
     function filterCards(e: ChangeEvent<HTMLInputElement>) {
         setSearch(e.target.value);
     }
+
+    function toggleColor(symbol: string) {
+        setColors(prev =>
+            prev.includes(symbol) ? prev.filter(c => c !== symbol) : [...prev, symbol]
+        );
+    }
+
+    function clearFilters() {
+        setFoil(undefined);
+        setManaCost('');
+        setSetCode('');
+        setRarity('');
+        setReleasedFrom('');
+        setReleasedTo('');
+        setColors([]);
+    }
+
+    const hasActiveFilters =
+        !!foil || !!manaCost || !!setCode || !!rarity || !!releasedFrom || !!releasedTo || colors.length > 0;
 
     // Pagination window
     const visiblePages = 5;
@@ -295,38 +359,154 @@ function Home() {
                         }}
                     >
                         ⚙ {t("home.filters")} {showFilters ? "▴" : "▾"}
+                        {hasActiveFilters && (
+                            <span
+                                style={{
+                                    width: "6px",
+                                    height: "6px",
+                                    borderRadius: "50%",
+                                    background: "#d4af37",
+                                    boxShadow: "0 0 6px rgba(212,175,55,0.8)",
+                                    marginLeft: "2px",
+                                }}
+                            />
+                        )}
                     </button>
                 </div>
 
                 {/* FILTERS PANEL */}
                 {showFilters && (
                     <div
-                        className="rounded-2xl p-5 mb-4 flex flex-wrap gap-6 items-center"
+                        className="rounded-2xl p-5 mb-4 flex flex-wrap gap-6 items-end"
                         style={{
                             background: "rgba(15,14,23,0.8)",
                             border: "1px solid rgba(212,175,55,0.12)",
                         }}
                     >
-                        <div className="flex items-center gap-3">
-                            <label style={{ fontSize: "12px", letterSpacing: "0.08em", color: "#9b8c6e", textTransform: "uppercase" }}>
-                                {t("home.manaCost")}
-                            </label>
+                        {/* Mana cost */}
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.manaCost")}</label>
                             <input
-                                type="number"
-                                placeholder="0"
-                                style={{
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: "1px solid rgba(212,175,55,0.15)",
-                                    borderRadius: "8px",
-                                    padding: "6px 12px",
-                                    color: "#ede8d8",
-                                    fontSize: "13px",
-                                    width: "80px",
-                                    outline: "none",
-                                    fontFamily: "'DM Sans', sans-serif",
-                                }}
+                                type="text"
+                                value={manaCost}
+                                onChange={e => setManaCost(e.target.value)}
+                                placeholder={t("home.manaCostPlaceholder")}
+                                style={{ ...filterInputStyle, width: "140px" }}
                             />
                         </div>
+
+                        {/* Collection / set */}
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.collection")}</label>
+                            <select
+                                value={setCode}
+                                onChange={e => setSetCode(e.target.value)}
+                                style={{ ...filterInputStyle, width: "200px", cursor: "pointer" }}
+                            >
+                                <option value="">{t("home.allCollections")}</option>
+                                {sets.map(s => (
+                                    <option key={s.set_code} value={s.set_code}>
+                                        {s.set_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Rarity */}
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.rarity")}</label>
+                            <select
+                                value={rarity}
+                                onChange={e => setRarity(e.target.value)}
+                                style={{ ...filterInputStyle, width: "150px", cursor: "pointer" }}
+                            >
+                                <option value="">{t("home.allRarities")}</option>
+                                <option value="common">{t("home.rarityCommon")}</option>
+                                <option value="uncommon">{t("home.rarityUncommon")}</option>
+                                <option value="rare">{t("home.rarityRare")}</option>
+                                <option value="mythic">{t("home.rarityMythic")}</option>
+                                <option value="special">{t("home.rarityLegal")}</option>
+                                <option value="bonus">{t("home.rarityBonus")}</option>
+                            </select>
+                        </div>
+
+                        {/* Release date range */}
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.releasedFrom")}</label>
+                            <input
+                                type="date"
+                                value={releasedFrom}
+                                onChange={e => setReleasedFrom(e.target.value)}
+                                style={{ ...filterInputStyle, width: "160px", colorScheme: "dark" }}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.releasedTo")}</label>
+                            <input
+                                type="date"
+                                value={releasedTo}
+                                onChange={e => setReleasedTo(e.target.value)}
+                                style={{ ...filterInputStyle, width: "160px", colorScheme: "dark" }}
+                            />
+                        </div>
+
+                        {/* Colors */}
+                        <div className="flex flex-col gap-2">
+                            <label style={filterLabelStyle}>{t("home.colors")}</label>
+                            <div className="flex gap-2">
+                                {[
+                                    { symbol: "W", swatch: "#f4ecd8" },
+                                    { symbol: "U", swatch: "#4fa8dd" },
+                                    { symbol: "B", swatch: "#8b7fb0" },
+                                    { symbol: "R", swatch: "#e37b5e" },
+                                    { symbol: "G", swatch: "#6fae66" },
+                                ].map(({ symbol, swatch }) => {
+                                    const active = colors.includes(symbol);
+                                    return (
+                                        <button
+                                            key={symbol}
+                                            onClick={() => toggleColor(symbol)}
+                                            title={symbol}
+                                            style={{
+                                                width: "32px",
+                                                height: "32px",
+                                                borderRadius: "50%",
+                                                fontSize: "12px",
+                                                fontWeight: 700,
+                                                cursor: "pointer",
+                                                background: active ? swatch : "rgba(255,255,255,0.03)",
+                                                color: active ? "#0d0c14" : "#6b6578",
+                                                border: active
+                                                    ? `1px solid ${swatch}`
+                                                    : "1px solid rgba(212,175,55,0.18)",
+                                                boxShadow: active ? `0 0 10px ${swatch}66` : "none",
+                                                transition: "all 0.15s",
+                                            }}
+                                        >
+                                            {symbol}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearFilters}
+                                style={{
+                                    fontSize: "12px",
+                                    color: "#9b8c6e",
+                                    background: "transparent",
+                                    border: "1px solid rgba(212,175,55,0.18)",
+                                    borderRadius: "10px",
+                                    padding: "9px 14px",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {t("home.clearFilters")}
+                            </button>
+                        )}
                     </div>
                 )}
 

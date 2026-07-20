@@ -1,6 +1,6 @@
 import express from 'express'
 const router = express.Router();
-import { get_cards, get_price, get_card, runCardSync, runPriceSync, getAdminStats } from './model.js';
+import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
 import { validJwt, requireAdmin, AuthRequest } from './middleware.js';
@@ -33,6 +33,12 @@ router.get('/cards/:card_id', async (req, res)=>
   const data = await get_card(card_id);
 
   res.send(data);
+})
+
+router.get('/sets', async (req, res)=>
+{
+  const sets = await get_sets();
+  res.send(sets);
 })
 
 router.post('/login', async (req, res)=>{

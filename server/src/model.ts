@@ -406,16 +406,50 @@ export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}
     {
       where.foil = filter.foil;
     }
+    if(filter.set_code)
+    {
+      where.set_code = filter.set_code;
+    }
+    if(filter.rarity)
+    {
+      where.rarity = filter.rarity;
+    }
+    if(filter.mana_cost)
+    {
+      // mana_cost is stored as a Scryfall-style string (e.g. "{2}{U}{U}"),
+      // so this matches cards whose cost contains the given symbols/text.
+      where.mana_cost = {contains:filter.mana_cost,mode:'insensitive'}
+    }
+    if(filter.colors)
+    {
+      const colorList = filter.colors
+        .split(',')
+        .map(c => c.trim().toUpperCase())
+        .filter(Boolean);
+
+      if(colorList.length)
+      {
+        where.colors = {hasSome: colorList};
+      }
+    }
+    if(filter.released_from || filter.released_to)
+    {
+      where.released_at = {};
+      if(filter.released_from) where.released_at.gte = new Date(filter.released_from);
+      if(filter.released_to) where.released_at.lte = new Date(filter.released_to);
+    }
 
 
     const data = await prisma.cards.findMany({
       where,
       skip: (page - 1) * limit,
-      take: limit
+      take: limit,
+      orderBy: {name: 'asc'}
     });
 
-    
-    const total = await prisma.cards.count();
+    // NOTE: previously this counted every card regardless of filter, which
+    // made totalPages wrong whenever a filter was active.
+    const total = await prisma.cards.count({ where });
 
     return {
       data,
@@ -423,6 +457,22 @@ export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}
     };
   } catch (err) {
     console.log(err);
+  }
+}
+
+export async function get_sets() {
+  try {
+    const sets = await prisma.cards.findMany({
+      where: { set_code: { not: null } },
+      distinct: ['set_code'],
+      select: { set_code: true, set_name: true },
+      orderBy: { set_name: 'asc' }
+    });
+
+    return sets;
+  } catch (err) {
+    console.log(err);
+    return [];
   }
 }
 
