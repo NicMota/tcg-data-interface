@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
+import prisma from './db/db.js';
 
 export interface AuthUserPayload {
     id: string;
@@ -36,4 +37,27 @@ const validJwt = (req: AuthRequest, res: Response, next: NextFunction) => {
 
 }
 
-export { validJwt };
+// Must run after validJwt, which populates req.user.
+const requireAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+
+    if (!req.user) {
+        res.status(403).json({ message: "Não autorizado." });
+        return;
+    }
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+        if (!user || !user.isAdmin) {
+            res.status(403).json({ message: "Acesso restrito a administradores." });
+            return;
+        }
+
+        next();
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Erro ao verificar permissões." });
+    }
+}
+
+export { validJwt, requireAdmin };

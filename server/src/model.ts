@@ -6,6 +6,7 @@ import axios from 'axios';
 import { search_filter, SearchFilters } from './utils.js';
 import "dotenv/config";
 import prisma from './db/db.js';
+import { Prisma } from '@prisma/client';
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/stream-array.js';
 import chain from 'stream-chain';
@@ -58,12 +59,47 @@ interface ScryfallCard {
     normal?: string
     large?: string
   }
+  // Double-faced / modal / transform cards don't carry a top-level
+  // image_uris - each face has its own instead. We fall back to the
+  // front face's image so these cards aren't stored without an image.
+  card_faces?: {
+    image_uris?: {
+      small?: string
+      normal?: string
+      large?: string
+    }
+  }[]
+}
+
+// Scryfall omits image_uris at the top level for double-faced/transform/
+// modal cards - the images live under card_faces[0] instead. This picks
+// the best available image so every card we persist has one.
+function resolveImageUris(card: ScryfallCard) {
+  if (card.image_uris) return card.image_uris;
+
+  const frontFace = card.card_faces?.[0];
+  if (frontFace?.image_uris) return frontFace.image_uris;
+
+  return undefined;
 }
 
 
 export async function load_cards_data() {
 
   console.log('loading cards...');
+
+  // Cards already stored without an image - if this run finds a usable
+  // image for one of them (e.g. via the card_faces fallback), it gets
+  // repaired instead of silently skipped by skipDuplicates.
+  const missingImageRows = await prisma.cards.findMany({
+    where: { image_uris: { equals: Prisma.DbNull } },
+    select: { card_id: true }
+  });
+  const missingImageIds = new Set(
+    missingImageRows
+      .map((c: { card_id: string | null }) => c.card_id)
+      .filter((id: string | null): id is string => !!id)
+  );
 
   const bulkInfo = await axios.get(
     'https://api.scryfall.com/bulk-data/default_cards'
@@ -83,60 +119,97 @@ export async function load_cards_data() {
     streamArray()
   ]);
 
-  const batch: any[] = [];
+  const insertBatch: any[] = [];
+  const fixBatch: { card_id: string; image_uris: any }[] = [];
   const batchSize = 100;
+
+  let insertedTotal = 0;
+  let fixedTotal = 0;
 
   for await (const item of pipeline) {
 
-    const card = item.value;
+    const card: ScryfallCard = item.value;
+    const image_uris = resolveImageUris(card);
 
-    batch.push({
-      name: card.name,
-      card_id: card.id,
-      released_at: card.released_at
-        ? new Date(card.released_at)
-        : null,
-      scryfall_uri: card.scryfall_uri,
-      mana_cost: card.mana_cost,
-      type_line: card.type_line,
-      colors: card.colors,
-      color_identity: card.color_identity,
-      foil: card.foil,
-      nonfoil: card.nonfoil,
-      set_code: card.set,
-      set_name: card.set_name,
-      set_type: card.set_type,
-      set_uri: card.set_uri,
-      set_search_uri: card.set_search_uri,
-      scryfall_set_uri: card.scryfall_set_uri,
-      rarity: card.rarity,
-      prices: card.prices,
-      related_uri: card.related_uris,
-      image_uris: card.image_uris
-    });
+    if (missingImageIds.has(card.id)) {
+      if (image_uris) {
+        fixBatch.push({ card_id: card.id, image_uris });
+      }
+    } else {
+      insertBatch.push({
+        name: card.name,
+        card_id: card.id,
+        released_at: card.released_at
+          ? new Date(card.released_at)
+          : null,
+        scryfall_uri: card.scryfall_uri,
+        mana_cost: card.mana_cost,
+        type_line: card.type_line,
+        colors: card.colors,
+        color_identity: card.color_identity,
+        foil: card.foil,
+        nonfoil: card.nonfoil,
+        set_code: card.set,
+        set_name: card.set_name,
+        set_type: card.set_type,
+        set_uri: card.set_uri,
+        set_search_uri: card.set_search_uri,
+        scryfall_set_uri: card.scryfall_set_uri,
+        rarity: card.rarity,
+        prices: card.prices,
+        related_uri: card.related_uris,
+        image_uris
+      });
+    }
 
-    if (batch.length >= batchSize) {
-
+    if (insertBatch.length >= batchSize) {
       await prisma.cards.createMany({
-        data: batch,
+        data: insertBatch,
         skipDuplicates: true
       });
+      insertedTotal += insertBatch.length;
+      console.log(`Inserted ${insertBatch.length}`);
+      insertBatch.length = 0;
+    }
 
-      console.log(`Inserted ${batch.length}`);
-
-      batch.length = 0;
+    if (fixBatch.length >= batchSize) {
+      await prisma.$transaction(
+        fixBatch.map(row =>
+          prisma.cards.update({
+            where: { card_id: row.card_id },
+            data: { image_uris: row.image_uris }
+          })
+        )
+      );
+      fixedTotal += fixBatch.length;
+      console.log(`Fixed images for ${fixBatch.length}`);
+      fixBatch.length = 0;
     }
   }
 
-  if (batch.length > 0) {
-
+  if (insertBatch.length > 0) {
     await prisma.cards.createMany({
-      data: batch,
+      data: insertBatch,
       skipDuplicates: true
     });
+    insertedTotal += insertBatch.length;
   }
 
-  console.log('loaded!');
+  if (fixBatch.length > 0) {
+    await prisma.$transaction(
+      fixBatch.map(row =>
+        prisma.cards.update({
+          where: { card_id: row.card_id },
+          data: { image_uris: row.image_uris }
+        })
+      )
+    );
+    fixedTotal += fixBatch.length;
+  }
+
+  console.log(`loaded! (${insertedTotal} inserted, ${fixedTotal} images fixed)`);
+
+  return { insertedTotal, fixedTotal };
 }
 export async function get_price(id: string) {
   try {
@@ -222,6 +295,105 @@ export async function update_prices() {
 
 
 
+
+// --- Admin panel support -------------------------------------------------
+
+export type AdminJobName = 'cards' | 'prices';
+
+interface AdminJobStatus {
+  running: boolean;
+  job: AdminJobName | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error: string | null;
+  lastResult: { insertedTotal?: number; fixedTotal?: number } | null;
+}
+
+export const jobStatus: AdminJobStatus = {
+  running: false,
+  job: null,
+  startedAt: null,
+  finishedAt: null,
+  error: null,
+  lastResult: null
+};
+
+export function runCardSync() {
+  if (jobStatus.running) {
+    return { started: false, message: 'Já existe uma sincronização em andamento.' };
+  }
+
+  jobStatus.running = true;
+  jobStatus.job = 'cards';
+  jobStatus.startedAt = new Date().toISOString();
+  jobStatus.finishedAt = null;
+  jobStatus.error = null;
+
+  load_cards_data()
+    .then(result => {
+      jobStatus.lastResult = result;
+    })
+    .catch(err => {
+      console.error(err);
+      jobStatus.error = err?.message ?? 'Erro desconhecido ao sincronizar cartas.';
+    })
+    .finally(() => {
+      jobStatus.running = false;
+      jobStatus.finishedAt = new Date().toISOString();
+    });
+
+  return { started: true, message: 'Sincronização de cartas iniciada.' };
+}
+
+export function runPriceSync() {
+  if (jobStatus.running) {
+    return { started: false, message: 'Já existe uma sincronização em andamento.' };
+  }
+
+  jobStatus.running = true;
+  jobStatus.job = 'prices';
+  jobStatus.startedAt = new Date().toISOString();
+  jobStatus.finishedAt = null;
+  jobStatus.error = null;
+
+  update_prices()
+    .then(() => {
+      jobStatus.lastResult = null;
+    })
+    .catch(err => {
+      console.error(err);
+      jobStatus.error = err?.message ?? 'Erro desconhecido ao atualizar preços.';
+    })
+    .finally(() => {
+      jobStatus.running = false;
+      jobStatus.finishedAt = new Date().toISOString();
+    });
+
+  return { started: true, message: 'Atualização de preços iniciada.' };
+}
+
+export async function getAdminStats() {
+  const [totalCards, totalPriceRecords, totalUsers, cardsWithoutImage, lastPrice] =
+    await Promise.all([
+      prisma.cards.count(),
+      prisma.card_prices.count(),
+      prisma.user.count(),
+      prisma.cards.count({ where: { image_uris: { equals: Prisma.DbNull } } }),
+      prisma.card_prices.findFirst({
+        orderBy: { date: 'desc' },
+        select: { date: true }
+      })
+    ]);
+
+  return {
+    totalCards,
+    totalPriceRecords,
+    totalUsers,
+    cardsWithoutImage,
+    lastPriceUpdate: lastPrice?.date ?? null,
+    job: jobStatus
+  };
+}
 
 export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}) {
   try {

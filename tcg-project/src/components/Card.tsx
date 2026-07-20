@@ -86,6 +86,7 @@ export function Card({ c }) {
                     style={{ display: "block", transition: "transform 0.5s ease" }}
                     onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.04)")}
                     onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
                 />
 
                 {/* Foil shimmer badge */}

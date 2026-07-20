@@ -191,6 +191,7 @@ export function CardInfo() {
                                     display: "block",
                                     boxShadow: "0 12px 48px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.06)",
                                 }}
+                                onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
                             />
 
                             <div className="mt-7">

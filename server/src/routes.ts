@@ -1,9 +1,9 @@
 import express from 'express'
 const router = express.Router();
-import { load_cards_data, get_cards, update_prices, get_price, get_card } from './model.js';
+import { get_cards, get_price, get_card, runCardSync, runPriceSync, getAdminStats } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
-import { validJwt, AuthRequest } from './middleware.js';
+import { validJwt, requireAdmin, AuthRequest } from './middleware.js';
 import { login, register, getUserById } from './auth.js';
 
 router.get('/cards',async (req,res)=>
@@ -70,5 +70,27 @@ router.get('/me', validJwt, async (req: AuthRequest, res) => {
   }
 });
 
+
+// --- Admin only ---
+
+router.get('/admin/stats', validJwt, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const stats = await getAdminStats();
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erro ao buscar estatísticas." });
+  }
+});
+
+router.post('/admin/sync-cards', validJwt, requireAdmin, async (req: AuthRequest, res) => {
+  const result = runCardSync();
+  res.status(result.started ? 202 : 409).json(result);
+});
+
+router.post('/admin/update-prices', validJwt, requireAdmin, async (req: AuthRequest, res) => {
+  const result = runPriceSync();
+  res.status(result.started ? 202 : 409).json(result);
+});
 
 export default router;

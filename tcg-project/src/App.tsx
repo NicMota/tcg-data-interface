@@ -6,14 +6,15 @@ import { CardInfo } from './pages/CardInfo'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
+import { Admin } from './pages/adm/Admin'
 import { AuthProvider } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { AdminRoute } from './components/AdminRoute'
 
 
 function App() {
 
-  //resolver cartas que não tem imagem, (face_card)
   return (
     <LanguageProvider>
       <BrowserRouter>
@@ -30,6 +31,9 @@ function App() {
             } />
             <Route path='/card/:card_id' element={
               <ProtectedRoute><CardInfo/></ProtectedRoute>
+            } />
+            <Route path='/admin' element={
+              <AdminRoute><Admin/></AdminRoute>
             } />
           </Routes>
         </AuthProvider>

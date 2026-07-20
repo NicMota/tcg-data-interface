@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
 import axs from '../axios';
 import { Card } from '../components/Card';
 import { useAuth } from '../context/AuthContext';
@@ -143,6 +144,26 @@ function Home() {
                     )}
 
                     <LanguageSwitcher />
+
+                    {user?.isAdmin && (
+                        <Link
+                            to="/admin"
+                            className="flex-shrink-0"
+                            style={{
+                                fontSize: "12px",
+                                color: "#d4af37",
+                                background: "rgba(212,175,55,0.08)",
+                                border: "1px solid rgba(212,175,55,0.25)",
+                                borderRadius: "10px",
+                                padding: "6px 12px",
+                                whiteSpace: "nowrap",
+                                textDecoration: "none",
+                                letterSpacing: "0.05em",
+                            }}
+                        >
+                            Admin
+                        </Link>
+                    )}
 
                     {/* Item count selector */}
                     <select
