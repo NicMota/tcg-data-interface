@@ -1,15 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
 import prisma from './db/db.js';
-
-export interface AuthUserPayload {
-    id: string;
-    email: string;
-}
-
-export interface AuthRequest extends Request {
-    user?: AuthUserPayload;
-}
+import { AuthRequest, AuthUserPayload } from "./interfaces/auth.interfaces.js";
 
 const secret = process.env.JWT_SECRET;
 

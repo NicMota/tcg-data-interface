@@ -1,12 +1,9 @@
-import prisma from "./db/db.js";
+import prisma from "../db/db.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import User from "../interfaces/user.interface.js";
 
-interface User {
-    name: string
-    email: string
-    password: string
-}
+
 const secret = process.env.JWT_SECRET;
 
 function stripPassword<T extends { password: string }>(user: T) {

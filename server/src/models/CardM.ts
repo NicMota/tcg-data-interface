@@ -3,16 +3,16 @@ import {Pool} from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
-import { search_filter, SearchFilters } from './utils.js';
+import { search_filter, SearchFilters } from '../utils.js';
 import "dotenv/config";
-import prisma from './db/db.js';
+import prisma from '../db/db.js';
 import { Prisma } from '@prisma/client';
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/stream-array.js';
 import chain from 'stream-chain';
 
-
-
+import axs from '../axios/client.js';
+import ScryfallCard from '../interfaces/card.interface.js';
 
 /* ideia: criar uma rotina,
 todo dia verificar se bulk data adiciona uma carta nova e adiciona-la a tabela cards
@@ -21,56 +21,11 @@ apos isso buscar preco de todas as cartas incluindo as novas
 2-atualizar precos
 */
 
-const axs = axios.create({
-  baseURL: 'https://api.scryfall.com',
-  headers:  {
-    'User-Agent':'TCGAnal/1.0',
-    'Accept':'*/*',
-    'Content-Type':'application/json',
-  }
-})
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-interface ScryfallCard {
-  name: string
-  id: string
-  released_at: string
-  scryfall_uri: string
-  mana_cost: string | null
-  type_line: string
-  colors: string[] | null
-  color_identity: string[] | null
-  foil: boolean
-  nonfoil: boolean
-  set: string
-  set_name: string
-  set_type: string
-  set_uri: string
-  set_search_uri: string
-  scryfall_set_uri: string
-  rarity: string
-  prices: Record<string, string | null>
-  related_uris: Record<string, string>
-  quality_score:number
-  image_uris?: {
-    small?: string
-    normal?: string
-    large?: string
-  }
-  // Double-faced / modal / transform cards don't carry a top-level
-  // image_uris - each face has its own instead. We fall back to the
-  // front face's image so these cards aren't stored without an image.
-  card_faces?: {
-    image_uris?: {
-      small?: string
-      normal?: string
-      large?: string
-    }
-  }[]
-}
 
 function hasValidImage(card : ScryfallCard)
 {
@@ -267,117 +222,6 @@ export async function load_cards_data() {
 
 
 
-
-async function get_price_changes() {
-    const latestDates = await prisma.card_prices.findMany({
-        select: {
-            date: true
-        },
-        distinct: ['date'],
-        orderBy: {
-            date: 'desc'
-        },
-        take: 2
-    });
-
-    if (latestDates.length < 2) {
-        return [];
-    }
-
-    const currentDate = latestDates[0].date;
-    const previousDate = latestDates[1].date;
-
-    const prices = await prisma.card_prices.findMany({
-        where: {
-            date: {
-                in: [currentDate, previousDate]
-            },
-            price_usd: {
-                not: null
-            }
-        },
-        select: {
-            card_id: true,
-            price_usd: true,
-            date: true,
-            cards: {
-                select: {
-                    name: true,
-                    set_name: true,
-                    image_uris: true
-                }
-            }
-        }
-    });
-
-    const priceMap = new Map<
-        string,
-        {
-            card: {
-                name: string | null;
-                set_name: string | null;
-                image_uris: unknown;
-            } | null;
-            current?: number;
-            previous?: number;
-        }
-    >();
-
-    for (const item of prices) {
-        if (!item.card_id || item.price_usd === null) {
-            continue;
-        }
-
-        const existing = priceMap.get(item.card_id) ?? {
-            card: item.cards
-        };
-
-        if (item.date.getTime() === currentDate.getTime()) {
-            existing.current = Number(item.price_usd);
-        }
-
-        if (item.date.getTime() === previousDate.getTime()) {
-            existing.previous = Number(item.price_usd);
-        }
-
-        priceMap.set(item.card_id, existing);
-    }
-
-    const changes = [];
-
-    for (const [card_id, value] of priceMap.entries()) {
-        if (
-            value.current == null ||
-            value.previous == null ||
-            value.previous <= 0
-        ) {
-            continue;
-        }
-
-        const change = value.current - value.previous;
-
-        changes.push({
-            card_id,
-            card: value.card,
-            previous_price: value.previous,
-            current_price: value.current,
-            change,
-            percent_change: (change / value.previous) * 100
-        });
-    }
-
-    return changes;
-}
-export async function get_market_movers()
-{
- const changes = await get_price_changes();
-
-  changes.sort(
-    (a, b) => Math.abs(b.percent_change) - Math.abs(a.percent_change)
-  );
-
-  return changes.slice(0,5);
-}
 
 
 export async function get_price(id: string) {
@@ -644,31 +488,3 @@ export async function get_sets() {
   }
 }
 
-export async function get_featured_cards() {
-
-    const changes = await get_price_changes();
-
-    const featured = changes
-        .filter((item) => {
-            if (!item.card) {
-                return false;
-            }
-
-            if (!item.card.name) {
-                return false;
-            }
-
-            if (!item.card.image_uris) {
-                return false;
-            }
-
-            return true;
-        })
-        .sort(
-            (a, b) =>
-                Math.abs(b.percent_change) -
-                Math.abs(a.percent_change)
-        );
-
-    return featured.slice(0, 8);
-}

@@ -1,8 +1,8 @@
 import express from 'express';
-import axios from 'axios';
 import cors from 'cors';
-import router from './routes.js';
-import { load_cards_data, update_prices } from './model.js';
+import router from './card-routes.js';
+import cards_router from './card-routes.js';
+import user_router from './user-routes.js';
 
 
 const app = express();
@@ -15,7 +15,10 @@ var corscfg = {
 
 
 app.use(cors(corscfg));
-app.use(router);
+
+
+app.use(cards_router);
+app.use(user_router);
 
 
 app.listen(PORT,"0.0.0.0",async ()=>
