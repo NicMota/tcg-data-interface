@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { useState } from "react";
 
 const sampleTicker = [
     { name: "Ragavan, Nimble Pilferer", set: "MH2", price: 42.18, diff: 3.41 },
@@ -17,10 +18,11 @@ interface Testimonial { quote: string; name: string; role: string }
 function Landing() {
     const { isAuthenticated, logout } = useAuth();
     const { t, tRaw } = useLanguage();
-
+        
+    const [movers, setMovers] = useState([]);
     const steps = tRaw<Step[]>("landing.howItWorks");
     const testimonials = tRaw<Testimonial[]>("landing.testimonials");
-
+    
     return (
         <div
             style={{
@@ -239,6 +241,7 @@ function Landing() {
                 </section>
 
                 {/* SOCIAL PROOF — imperfect rating + specific, attributable quotes */}
+                {/*}
                 <section className="text-center" style={{ marginBottom: "88px" }}>
                     <div className="flex items-center justify-center gap-2" style={{ marginBottom: "8px" }}>
                         <span style={{ color: "#d4af37", fontSize: "18px" }}>★★★★☆</span>
@@ -265,6 +268,7 @@ function Landing() {
                         ))}
                     </div>
                 </section>
+                */}
 
                 {/* FINAL CTA — same action, repeated, short path to it */}
                 <section

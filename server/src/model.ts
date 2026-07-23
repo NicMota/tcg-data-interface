@@ -211,6 +211,121 @@ export async function load_cards_data() {
 
   return { insertedTotal, fixedTotal };
 }
+
+
+
+
+
+export async function get_market_movers()
+{
+
+  const latestDates = await prisma.card_prices.findMany({
+      select: {
+          date: true
+      },
+      distinct: ['date'],
+      orderBy: {
+          date: 'desc'
+      },
+      take: 2
+  });
+
+  if (latestDates.length < 2) {
+      return [];
+  }
+
+  const currentDate = latestDates[0].date;
+  const previousDate = latestDates[1].date;
+
+  console.log('Current date:', currentDate);
+  console.log('Previous date:', previousDate);
+
+  const prices = await prisma.card_prices.findMany({
+      where: {
+          date: {
+              in: [currentDate, previousDate]
+          },
+          price_usd: {
+              not: null
+          }
+      },
+      select: {
+          card_id: true,
+          price_usd: true,
+          date: true,
+          cards: {
+            select: {
+                name: true,
+                set_name:true
+            }
+          
+          }
+      }
+  });
+
+  const priceMap = new Map<
+      string,
+      {   
+          card?:{
+            name:string | null;
+            set_name: string | null
+          } | null
+          current?: number;
+          previous?: number;
+      }
+  >();
+
+  for (const item of prices) {
+      if (!item.card_id || item.price_usd === null) {
+          continue;
+      }
+
+      const existing = priceMap.get(item.card_id) ?? {};
+
+      existing.card = item.cards;
+      if (item.date.getTime() === currentDate.getTime()) {
+          existing.current = Number(item.price_usd);
+      }
+
+      if (item.date.getTime() === previousDate.getTime()) {
+          existing.previous = Number(item.price_usd);
+      }
+      
+
+      priceMap.set(item.card_id, existing);
+  }
+
+
+  
+
+  
+  const movers = [];
+
+  for (const [card_id, value] of priceMap.entries()) {
+      if (value.current == null || value.previous == null) {
+          continue;
+      }
+
+      const change = value.current - value.previous;
+
+      movers.push({
+          card_id,
+          card:value.card,
+          previous_price: value.previous,
+          current_price: value.current,
+          change,
+          percent_change: (change / value.previous) * 100
+      });
+  }
+
+  movers.sort(
+    (a, b) => Math.abs(b.percent_change) - Math.abs(a.percent_change)
+  );
+
+  return movers.slice(0,5);
+}
+
+
 export async function get_price(id: string) {
   try {
     const prices = await prisma.card_prices.findMany({
@@ -226,7 +341,6 @@ export async function get_price(id: string) {
     return null;
   }
 }
-
 export async function get_card(id: string) {
   try {
     const card = await prisma.cards.findUnique({

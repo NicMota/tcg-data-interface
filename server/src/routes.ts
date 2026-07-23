@@ -1,6 +1,6 @@
 import express from 'express'
 const router = express.Router();
-import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats } from './model.js';
+import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats, get_market_movers } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
 import { validJwt, requireAdmin, AuthRequest } from './middleware.js';
@@ -62,6 +62,16 @@ router.post('/register', async (req, res)=>
   }
 });
 
+router.get('/movers', async (req, res)=>
+{
+  try{
+    const movers = await get_market_movers();
+    res.status(200).json(movers);
+  }catch(error : any)
+  {
+    res.status(500).json({ message: error?.message ?? "Erro ao buscar maiores variacoes" });
+  }
+})
 // Retorna os dados do usuário autenticado a partir do token enviado.
 router.get('/me', validJwt, async (req: AuthRequest, res) => {
   try {
