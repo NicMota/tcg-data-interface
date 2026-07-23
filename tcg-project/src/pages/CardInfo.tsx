@@ -94,19 +94,22 @@ export function CardInfo() {
                     className="max-w-7xl mx-auto px-8 flex items-center justify-between"
                     style={{ height: "72px" }}
                 >
-                    <h1
-                        style={{
-                            fontFamily: "'Cinzel', serif",
-                            fontSize: "20px",
-                            fontWeight: "700",
-                            letterSpacing: "0.25em",
-                            background: "linear-gradient(135deg, #d4af37, #f0d060, #9b7e2c)",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                        }}
-                    >
-                        MAGIC TCG TRACKER
-                    </h1>
+                    <Link to={'/'}>
+                        
+                        <h1
+                            style={{
+                                fontFamily: "'Cinzel', serif",
+                                fontSize: "20px",
+                                fontWeight: "700",
+                                letterSpacing: "0.25em",
+                                background: "linear-gradient(135deg, #d4af37, #f0d060, #9b7e2c)",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                            }}
+                        >
+                            MAGIC TCG TRACKER
+                        </h1>
+                    </Link>
 
                     {/* Decorative line */}
                     <div style={{

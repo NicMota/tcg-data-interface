@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const sampleTicker = [
     { name: "Ragavan, Nimble Pilferer", set: "MH2", price: 42.18, diff: 3.41 },
@@ -15,6 +15,17 @@ const sampleTicker = [
 interface Step { title: string; body: string }
 interface Testimonial { quote: string; name: string; role: string }
 
+async function getMarketMovers() {
+    const response = await fetch(
+        'http://localhost:8000/movers'
+    );
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch market movers');
+    }
+
+    return response.json();
+}
 function Landing() {
     const { isAuthenticated, logout } = useAuth();
     const { t, tRaw } = useLanguage();
@@ -22,6 +33,22 @@ function Landing() {
     const [movers, setMovers] = useState([]);
     const steps = tRaw<Step[]>("landing.howItWorks");
     const testimonials = tRaw<Testimonial[]>("landing.testimonials");
+    
+
+    useEffect(() => {
+    
+        async function loadMovers() {
+            try {
+                const data = await getMarketMovers();
+
+                setMovers(data);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        loadMovers();
+    }, []);
     
     return (
         <div
@@ -184,8 +211,8 @@ function Landing() {
                         <span style={{ fontSize: "11px", color: "#6b6578" }}>{t("landing.updatedDaily")}</span>
                     </div>
                     <div className="flex flex-col divide-y" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
-                        {sampleTicker.map((c) => {
-                            const positive = c.diff >= 0;
+                        {movers.map((c) => {
+                            const positive = c?.change >= 0;
                             return (
                                 <div
                                     key={c.name}
@@ -194,13 +221,13 @@ function Landing() {
                                 >
                                     <div>
                                         <p style={{ fontFamily: "'Cinzel', serif", fontSize: "13px", color: "#ede8d8" }}>
-                                            {c.name}
+                                            {c.card.name}
                                         </p>
                                         <p style={{ fontSize: "11px", color: "#6b6578" }}>{c.set}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span style={{ fontFamily: "'Cinzel', serif", fontSize: "14px", color: "#d4af37" }}>
-                                            ${c.price.toFixed(2)}
+                                            ${c.current_price?.toFixed(2)}
                                         </span>
                                         <span style={{
                                             fontSize: "12px", fontWeight: 600, padding: "3px 9px", borderRadius: "6px",
@@ -208,7 +235,7 @@ function Landing() {
                                             background: positive ? "rgba(52,211,153,0.1)" : "rgba(248,113,113,0.1)",
                                             border: `1px solid ${positive ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
                                         }}>
-                                            {positive ? "▲" : "▼"} {Math.abs(c.diff).toFixed(2)}
+                                            {positive ? "▲" : "▼"} {Math.abs(c.change).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>

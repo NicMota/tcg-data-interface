@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import Landing from './Landing';
 
 const filterLabelStyle: React.CSSProperties = {
     fontSize: "11px",
@@ -175,20 +176,23 @@ function Home() {
                             <polygon points="14,7 21,11 21,17 14,21 7,17 7,11" stroke="#d4af37" strokeWidth="0.8" fill="rgba(212,175,55,0.06)" />
                             <circle cx="14" cy="14" r="2.5" fill="#d4af37" opacity="0.9" />
                         </svg>
-                        <h1
-                            style={{
-                                fontFamily: "'Cinzel', serif",
-                                fontSize: "18px",
-                                fontWeight: "700",
-                                letterSpacing: "0.2em",
-                                background: "linear-gradient(135deg, #d4af37 0%, #f0d060 50%, #9b7e2c 100%)",
-                                WebkitBackgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            MAGIC TCG TRACKER
-                        </h1>
+                        <Link to={'/'}>
+                            <h1
+                                style={{
+                                    fontFamily: "'Cinzel', serif",
+                                    fontSize: "18px",
+                                    fontWeight: "700",
+                                    letterSpacing: "0.2em",
+                                    background: "linear-gradient(135deg, #d4af37 0%, #f0d060 50%, #9b7e2c 100%)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                    whiteSpace: "nowrap",
+                                    cursor:"pointer"
+                                }}
+                            >
+                                MAGIC TCG TRACKER
+                            </h1>
+                        </Link>
                     </div>
 
                     {/* Decorative line */}

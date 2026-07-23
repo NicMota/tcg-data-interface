@@ -49,5 +49,6 @@ model cards {
   prices           Json?
   related_uri      Json?
   image_uris       Json?
+  quality_score  Int            @default(0)
   card_prices      card_prices[]
 }

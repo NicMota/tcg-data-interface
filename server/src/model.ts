@@ -54,6 +54,7 @@ interface ScryfallCard {
   rarity: string
   prices: Record<string, string | null>
   related_uris: Record<string, string>
+  quality_score:number
   image_uris?: {
     small?: string
     normal?: string
@@ -71,6 +72,49 @@ interface ScryfallCard {
   }[]
 }
 
+function hasValidImage(card : ScryfallCard)
+{
+    if (!card.image_uris) {
+      return false;
+    }
+    return Boolean(
+        card.image_uris.normal ||
+        card.image_uris.large ||
+        card.image_uris.small
+    );
+}
+function hasValidPrice(card : ScryfallCard)
+{
+    if (!card.prices?.usd) {
+        return false;
+    }
+
+    const price = Number(card.prices.usd);
+
+    return Number.isFinite(price) && price > 0;
+}
+function calculateCardQualityScore(card : ScryfallCard){
+      let score = 0;
+
+    if (hasValidImage(card)) {
+        score += 50;
+    }
+
+    if (hasValidPrice(card)) {
+        score += 30;
+    }
+
+    if (card.name) {
+        score += 10;
+    }
+
+    if (card.set_name) {
+        score += 10;
+    }
+
+    return score;
+}
+
 // Scryfall omits image_uris at the top level for double-faced/transform/
 // modal cards - the images live under card_faces[0] instead. This picks
 // the best available image so every card we persist has one.
@@ -83,57 +127,69 @@ function resolveImageUris(card: ScryfallCard) {
   return undefined;
 }
 
-
 export async function load_cards_data() {
-
+ 
   console.log('loading cards...');
-
-  // Cards already stored without an image - if this run finds a usable
-  // image for one of them (e.g. via the card_faces fallback), it gets
-  // repaired instead of silently skipped by skipDuplicates.
-  const missingImageRows = await prisma.cards.findMany({
-    where: { image_uris: { equals: Prisma.DbNull } },
-    select: { card_id: true }
+ 
+  // Snapshot of what's already in the DB, so during the same streaming
+  // pass we can detect drift on quality_score (stale) and image_uris
+  // (missing) without a second bulk fetch or a per-card query.
+  const existingRows = await prisma.cards.findMany({
+    select: { card_id: true, quality_score: true, image_uris: true }
   });
-  const missingImageIds = new Set(
-    missingImageRows
-      .map((c: { card_id: string | null }) => c.card_id)
-      .filter((id: string | null): id is string => !!id)
+  const existingByCardId = new Map(
+    existingRows
+      .filter((c: { card_id: string | null }) => !!c.card_id)
+      .map((c: { card_id: string | null; quality_score: number | null; image_uris: any }) => [c.card_id as string, c])
   );
-
+ 
   const bulkInfo = await axios.get(
     'https://api.scryfall.com/bulk-data/default_cards'
   );
-
+ 
   const url = bulkInfo.data.download_uri;
-
+ 
   const response = await axios({
     method: 'GET',
     url,
     responseType: 'stream'
   });
-
+ 
   const pipeline = chain([
     response.data,
     parser(),
     streamArray()
   ]);
-
+ 
   const insertBatch: any[] = [];
-  const fixBatch: { card_id: string; image_uris: any }[] = [];
+  const updateBatch: { card_id: string; quality_score?: number; image_uris?: any }[] = [];
   const batchSize = 100;
-
+ 
   let insertedTotal = 0;
-  let fixedTotal = 0;
-
+  let updatedTotal = 0;
+ 
   for await (const item of pipeline) {
-
+ 
     const card: ScryfallCard = item.value;
     const image_uris = resolveImageUris(card);
-
-    if (missingImageIds.has(card.id)) {
-      if (image_uris) {
-        fixBatch.push({ card_id: card.id, image_uris });
+    const score = calculateCardQualityScore(card);
+ 
+    const existing = existingByCardId.get(card.id);
+ 
+    if (existing) {
+      const data: { quality_score?: number; image_uris?: any } = {};
+ 
+      if (existing.quality_score !== score) {
+        data.quality_score = score;
+      }
+ 
+      // Only repair a missing image - never overwrite one we already have.
+      if (!existing.image_uris && image_uris) {
+        data.image_uris = image_uris;
+      }
+ 
+      if (Object.keys(data).length > 0) {
+        updateBatch.push({ card_id: card.id, ...data });
       }
     } else {
       insertBatch.push({
@@ -158,10 +214,11 @@ export async function load_cards_data() {
         rarity: card.rarity,
         prices: card.prices,
         related_uri: card.related_uris,
+        quality_score:score,
         image_uris
       });
     }
-
+ 
     if (insertBatch.length >= batchSize) {
       await prisma.cards.createMany({
         data: insertBatch,
@@ -171,22 +228,20 @@ export async function load_cards_data() {
       console.log(`Inserted ${insertBatch.length}`);
       insertBatch.length = 0;
     }
-
-    if (fixBatch.length >= batchSize) {
+ 
+    if (updateBatch.length >= batchSize) {
       await prisma.$transaction(
-        fixBatch.map(row =>
-          prisma.cards.update({
-            where: { card_id: row.card_id },
-            data: { image_uris: row.image_uris }
-          })
-        )
+        updateBatch.map(row => {
+          const { card_id, ...data } = row;
+          return prisma.cards.update({ where: { card_id }, data });
+        })
       );
-      fixedTotal += fixBatch.length;
-      console.log(`Fixed images for ${fixBatch.length}`);
-      fixBatch.length = 0;
+      updatedTotal += updateBatch.length;
+      console.log(`Updated ${updateBatch.length} existing cards`);
+      updateBatch.length = 0;
     }
   }
-
+ 
   if (insertBatch.length > 0) {
     await prisma.cards.createMany({
       data: insertBatch,
@@ -194,135 +249,134 @@ export async function load_cards_data() {
     });
     insertedTotal += insertBatch.length;
   }
-
-  if (fixBatch.length > 0) {
+ 
+  if (updateBatch.length > 0) {
     await prisma.$transaction(
-      fixBatch.map(row =>
-        prisma.cards.update({
-          where: { card_id: row.card_id },
-          data: { image_uris: row.image_uris }
-        })
-      )
+      updateBatch.map(row => {
+        const { card_id, ...data } = row;
+        return prisma.cards.update({ where: { card_id }, data });
+      })
     );
-    fixedTotal += fixBatch.length;
+    updatedTotal += updateBatch.length;
   }
-
-  console.log(`loaded! (${insertedTotal} inserted, ${fixedTotal} images fixed)`);
-
-  return { insertedTotal, fixedTotal };
+ 
+  console.log(`loaded! (${insertedTotal} inserted, ${updatedTotal} atualizados [score/imagem])`);
+ 
+  return { insertedTotal, updatedTotal };
 }
 
 
 
 
+async function get_price_changes() {
+    const latestDates = await prisma.card_prices.findMany({
+        select: {
+            date: true
+        },
+        distinct: ['date'],
+        orderBy: {
+            date: 'desc'
+        },
+        take: 2
+    });
 
+    if (latestDates.length < 2) {
+        return [];
+    }
+
+    const currentDate = latestDates[0].date;
+    const previousDate = latestDates[1].date;
+
+    const prices = await prisma.card_prices.findMany({
+        where: {
+            date: {
+                in: [currentDate, previousDate]
+            },
+            price_usd: {
+                not: null
+            }
+        },
+        select: {
+            card_id: true,
+            price_usd: true,
+            date: true,
+            cards: {
+                select: {
+                    name: true,
+                    set_name: true,
+                    image_uris: true
+                }
+            }
+        }
+    });
+
+    const priceMap = new Map<
+        string,
+        {
+            card: {
+                name: string | null;
+                set_name: string | null;
+                image_uris: unknown;
+            } | null;
+            current?: number;
+            previous?: number;
+        }
+    >();
+
+    for (const item of prices) {
+        if (!item.card_id || item.price_usd === null) {
+            continue;
+        }
+
+        const existing = priceMap.get(item.card_id) ?? {
+            card: item.cards
+        };
+
+        if (item.date.getTime() === currentDate.getTime()) {
+            existing.current = Number(item.price_usd);
+        }
+
+        if (item.date.getTime() === previousDate.getTime()) {
+            existing.previous = Number(item.price_usd);
+        }
+
+        priceMap.set(item.card_id, existing);
+    }
+
+    const changes = [];
+
+    for (const [card_id, value] of priceMap.entries()) {
+        if (
+            value.current == null ||
+            value.previous == null ||
+            value.previous <= 0
+        ) {
+            continue;
+        }
+
+        const change = value.current - value.previous;
+
+        changes.push({
+            card_id,
+            card: value.card,
+            previous_price: value.previous,
+            current_price: value.current,
+            change,
+            percent_change: (change / value.previous) * 100
+        });
+    }
+
+    return changes;
+}
 export async function get_market_movers()
 {
+ const changes = await get_price_changes();
 
-  const latestDates = await prisma.card_prices.findMany({
-      select: {
-          date: true
-      },
-      distinct: ['date'],
-      orderBy: {
-          date: 'desc'
-      },
-      take: 2
-  });
-
-  if (latestDates.length < 2) {
-      return [];
-  }
-
-  const currentDate = latestDates[0].date;
-  const previousDate = latestDates[1].date;
-
-  console.log('Current date:', currentDate);
-  console.log('Previous date:', previousDate);
-
-  const prices = await prisma.card_prices.findMany({
-      where: {
-          date: {
-              in: [currentDate, previousDate]
-          },
-          price_usd: {
-              not: null
-          }
-      },
-      select: {
-          card_id: true,
-          price_usd: true,
-          date: true,
-          cards: {
-            select: {
-                name: true,
-                set_name:true
-            }
-          
-          }
-      }
-  });
-
-  const priceMap = new Map<
-      string,
-      {   
-          card?:{
-            name:string | null;
-            set_name: string | null
-          } | null
-          current?: number;
-          previous?: number;
-      }
-  >();
-
-  for (const item of prices) {
-      if (!item.card_id || item.price_usd === null) {
-          continue;
-      }
-
-      const existing = priceMap.get(item.card_id) ?? {};
-
-      existing.card = item.cards;
-      if (item.date.getTime() === currentDate.getTime()) {
-          existing.current = Number(item.price_usd);
-      }
-
-      if (item.date.getTime() === previousDate.getTime()) {
-          existing.previous = Number(item.price_usd);
-      }
-      
-
-      priceMap.set(item.card_id, existing);
-  }
-
-
-  
-
-  
-  const movers = [];
-
-  for (const [card_id, value] of priceMap.entries()) {
-      if (value.current == null || value.previous == null) {
-          continue;
-      }
-
-      const change = value.current - value.previous;
-
-      movers.push({
-          card_id,
-          card:value.card,
-          previous_price: value.previous,
-          current_price: value.current,
-          change,
-          percent_change: (change / value.previous) * 100
-      });
-  }
-
-  movers.sort(
+  changes.sort(
     (a, b) => Math.abs(b.percent_change) - Math.abs(a.percent_change)
   );
 
-  return movers.slice(0,5);
+  return changes.slice(0,5);
 }
 
 
@@ -558,7 +612,7 @@ export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: {name: 'asc'}
+      orderBy: {quality_score: 'desc'}
     });
 
     // NOTE: previously this counted every card regardless of filter, which
@@ -590,3 +644,31 @@ export async function get_sets() {
   }
 }
 
+export async function get_featured_cards() {
+
+    const changes = await get_price_changes();
+
+    const featured = changes
+        .filter((item) => {
+            if (!item.card) {
+                return false;
+            }
+
+            if (!item.card.name) {
+                return false;
+            }
+
+            if (!item.card.image_uris) {
+                return false;
+            }
+
+            return true;
+        })
+        .sort(
+            (a, b) =>
+                Math.abs(b.percent_change) -
+                Math.abs(a.percent_change)
+        );
+
+    return featured.slice(0, 8);
+}

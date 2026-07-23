@@ -1,6 +1,6 @@
 import express from 'express'
 const router = express.Router();
-import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats, get_market_movers } from './model.js';
+import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats, get_market_movers, get_featured_cards } from './model.js';
 import { search_filter, SearchFilters } from './utils.js';
 import {z} from 'zod';
 import { validJwt, requireAdmin, AuthRequest } from './middleware.js';
@@ -62,6 +62,17 @@ router.post('/register', async (req, res)=>
   }
 });
 
+router.get('/cards/featured' ,  async (req, res)=>
+{
+  try{
+    const feat_cards = await get_featured_cards();
+  res.status(200).json(feat_cards);
+  }
+  catch (error: any) {
+    res.status(400).json({ message: error?.message ?? "Erro ao recuperar featured_cards." });
+  }
+
+})
 router.get('/movers', async (req, res)=>
 {
   try{
