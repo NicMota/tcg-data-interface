@@ -1,3 +1,4 @@
+import prisma from "../db/db";
 
 async function get_price_changes() {
     const latestDates = await prisma.card_prices.findMany({

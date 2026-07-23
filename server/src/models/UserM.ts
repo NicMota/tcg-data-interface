@@ -1,7 +1,7 @@
 import prisma from "../db/db.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import User from "../interfaces/user.interface.js";
+import User from "../interfaces/user.interfaces.js";
 
 
 const secret = process.env.JWT_SECRET;

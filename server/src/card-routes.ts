@@ -59,7 +59,10 @@ cards_router.get('/cards/featured' ,  async (req, res)=>
   }
 
 })
-cards_router.get('/movers', async (req, res)=>
+
+
+/* MARKET ROUTES*/
+cards_router.get('/market/movers', async (req, res)=>
 {
   try{
     const movers = await get_market_movers();

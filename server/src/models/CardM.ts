@@ -12,7 +12,7 @@ import { streamArray } from 'stream-json/streamers/stream-array.js';
 import chain from 'stream-chain';
 
 import axs from '../axios/client.js';
-import ScryfallCard from '../interfaces/card.interface.js';
+import ScryfallCard from '../interfaces/card.interfaces.js';
 
 /* ideia: criar uma rotina,
 todo dia verificar se bulk data adiciona uma carta nova e adiciona-la a tabela cards
@@ -259,8 +259,18 @@ export async function get_card(id: string) {
 }
 //melhorar esse metodo
 export async function update_prices() {
-  const bulkInfo = await axs.get('https://api.scryfall.com/bulk-data/default_cards');
-  const url = bulkInfo.data.download_uri;
+
+    const existingCardIds = new Set(
+        (await prisma.cards.findMany({ select: { card_id: true } }))
+        .map((c: { card_id: string | null }) => c.card_id)
+        .filter((id: string | null): id is string => !!id)
+    );
+
+    let skippedTotal = 0;
+
+    const bulkInfo = await axs.get('https://api.scryfall.com/bulk-data/default_cards');
+    const url = bulkInfo.data.download_uri;
+
 
   const cards = await axs.get(url,{
     responseType:'stream'
@@ -276,6 +286,12 @@ export async function update_prices() {
   const batchSize = 100;
   for await (const item of pipeline) {
     const card = item.value;
+
+    if (!existingCardIds.has(card.id)) {
+      skippedTotal++;
+      continue;
+    }
+
     const price = card.prices?.usd;
     batch.push({
       card_id: card.id,
@@ -288,7 +304,7 @@ export async function update_prices() {
         data:batch,
         skipDuplicates:true
       })
-      console.log(`Updated ${batch.length}`);
+      
 
       batch.length = 0;
     }
@@ -303,6 +319,7 @@ export async function update_prices() {
     });
   }
   console.log('updated')
+  console.log(`Updated(${skippedTotal} ignorados - card_id ainda não existe em cards`);
 }
 
 
@@ -313,12 +330,12 @@ export async function update_prices() {
 export type AdminJobName = 'cards' | 'prices';
 
 interface AdminJobStatus {
-  running: boolean;
-  job: AdminJobName | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  error: string | null;
-  lastResult: { insertedTotal?: number; fixedTotal?: number } | null;
+    running: boolean;
+    job: AdminJobName | null;
+    startedAt: string | null;
+    finishedAt: string | null;
+    error: string | null;
+    lastResult: { insertedTotal?: number; updatedTotal?: number } | null;
 }
 
 export const jobStatus: AdminJobStatus = {
