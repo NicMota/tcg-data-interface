@@ -44,8 +44,8 @@ export function CardInfo() {
 
     }, []);
 
-    const currentPrice = priceData.prices.at(-1) ?? 0;
-    const prevPrice = priceData.prices.at(-2) ?? 0;
+    const currentPrice = priceData.prices.at(0) ?? 0;
+    const prevPrice = priceData.prices.at(1) ?? 0;
     const priceDiff = Number(currentPrice) - Number(prevPrice);
     const isPositive = priceDiff >= 0;
 

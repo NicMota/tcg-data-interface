@@ -36,7 +36,7 @@ export function Card({ c }) {
         fetchPrice();
 
     }, []);
-
+    const isZero = diff == 0;
     const isPositive = diff >= 0;
 
     return (    
@@ -155,7 +155,7 @@ export function Card({ c }) {
                 <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent)", margin: "4px 0" }} />
 
                 {/* Price row */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center mt-auto justify-between">
                     <span
                         style={{
                             fontFamily: "'Cinzel', serif",
@@ -163,11 +163,12 @@ export function Card({ c }) {
                             fontWeight: "700",
                             color: "#d4af37",
                             letterSpacing: "0.03em",
+                            
                         }}
                     >
                         ${price.toFixed(2)}
                     </span>
-
+                    {!isZero &&
                     <span
                         style={{
                             fontSize: "12px",
@@ -180,13 +181,13 @@ export function Card({ c }) {
                         }}
                     >
                         {isPositive ? "▲" : "▼"} {Math.abs(diff).toFixed(2)}
-                    </span>
+                    </span>}
                 </div>
 
                 {/* View button */}
                 <Link
                     to={`/card/${c.card_id}`}
-                    className="mt-2 block text-center rounded-xl py-2 text-sm font-semibold"
+                    className="mt-auto block text-center rounded-xl py-2 text-sm font-semibold"
                     style={{
                         background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.06))",
                         border: "1px solid rgba(212,175,55,0.3)",
@@ -197,6 +198,7 @@ export function Card({ c }) {
                         fontFamily: "'DM Sans', sans-serif",
                         transition: "background 0.2s, border-color 0.2s",
                         textDecoration: "none",
+                        
                     }}
                     onMouseEnter={e => {
                         (e.currentTarget as HTMLAnchorElement).style.background = "linear-gradient(135deg, rgba(212,175,55,0.28), rgba(212,175,55,0.12))";

@@ -16,7 +16,20 @@ export function CardChart({
 }: {
     price_info: PriceData
 }) {
+    const sortedData = price_info.dates
+    .map((date, index) => ({
+        date,
+        price: price_info.prices[index],
+    }))
+    .sort((a, b) => {
+        const [dayA, monthA, yearA] = a.date.split('/').map(Number);
+        const [dayB, monthB, yearB] = b.date.split('/').map(Number);
 
+        const dateA = new Date(yearA, monthA - 1, dayA);
+        const dateB = new Date(yearB, monthB - 1, dayB);
+
+        return dateA.getTime() - dateB.getTime();
+    });
     const cfg: Config = {
 
         options: {
@@ -60,7 +73,7 @@ export function CardChart({
             },
 
             xaxis: {
-                categories: price_info.dates,
+                categories: sortedData.map(item=>item.date),
                 labels: {
                     style: {
                         colors: '#6b6578',
@@ -115,7 +128,7 @@ export function CardChart({
         series: [
             {
                 name: 'Price USD',
-                data: price_info.prices,
+                data: sortedData.map(item=>item.price),
             }
         ],
     };

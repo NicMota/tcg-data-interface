@@ -300,13 +300,13 @@ export async function update_prices() {
     })
     if(batch.length>=batchSize)
     {
-      await prisma.card_prices.createMany({
-        data:batch,
-        skipDuplicates:true
-      })
-      
-
-      batch.length = 0;
+        await prisma.card_prices.createMany({
+            data:batch,
+            skipDuplicates:true
+        })
+        
+        console.log(`Updated ${batch.length}`);
+        batch.length = 0;
     }
   }
 
