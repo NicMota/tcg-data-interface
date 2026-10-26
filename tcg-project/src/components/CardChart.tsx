@@ -2,7 +2,7 @@ import type { ApexOptions } from 'apexcharts';
 import Chart from 'react-apexcharts';
 
 interface PriceData {
-    prices: number[]
+    prices: (number | null)[]
     dates: string[]
 }
 
@@ -21,15 +21,7 @@ export function CardChart({
         date,
         price: price_info.prices[index],
     }))
-    .sort((a, b) => {
-        const [dayA, monthA, yearA] = a.date.split('/').map(Number);
-        const [dayB, monthB, yearB] = b.date.split('/').map(Number);
-
-        const dateA = new Date(yearA, monthA - 1, dayA);
-        const dateB = new Date(yearB, monthB - 1, dayB);
-
-        return dateA.getTime() - dateB.getTime();
-    });
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
     const cfg: Config = {
 
         options: {
@@ -73,7 +65,8 @@ export function CardChart({
             },
 
             xaxis: {
-                categories: sortedData.map(item=>item.date),
+                type: 'datetime',
+                categories: sortedData.map(item => Date.parse(item.date)),
                 labels: {
                     style: {
                         colors: '#6b6578',
@@ -133,6 +126,7 @@ export function CardChart({
         ],
     };
 
+    if (!sortedData.some(item => item.price != null)) return <p role="status">—</p>;
     return (
         <div className="w-full overflow-hidden" style={{ margin: "0 -8px" }}>
             <Chart

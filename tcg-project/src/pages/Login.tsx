@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -31,9 +32,9 @@ function Login() {
 
             const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? "/cards";
             navigate(redirectTo, { replace: true });
-        } catch (err: any) {
+        } catch (err) {
             console.log(err);
-            setError(err?.response?.data?.message ?? t("login.errorGeneric"));
+            setError((isAxiosError(err) ? err.response?.data?.message : undefined) ?? t("login.errorGeneric"));
         } finally {
             setIsSubmitting(false);
         }

@@ -25,6 +25,7 @@ model User{
   isMod Boolean @default(false)
   isAdmin Boolean @default(false)
   emailConfirmed Boolean @default(false)
+  favorites Favorite[]
 }
 
 model cards {
@@ -51,4 +52,14 @@ model cards {
   image_uris       Json?
   quality_score  Int            @default(0)
   card_prices      card_prices[]
+  favorites        Favorite[]
+}
+
+model Favorite {
+  userId String
+  cardId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card cards @relation(fields: [cardId], references: [card_id], onDelete: Cascade)
+  @@id([userId, cardId])
 }

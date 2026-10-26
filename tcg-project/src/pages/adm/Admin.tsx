@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect -- Request lifecycle state is synchronized with the API. */
+import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axs from "../../axios";
@@ -11,7 +13,7 @@ interface AdminJobStatus {
     startedAt: string | null;
     finishedAt: string | null;
     error: string | null;
-    lastResult: { insertedTotal?: number; fixedTotal?: number } | null;
+    lastResult: { insertedTotal?: number; updatedTotal?: number } | null;
 }
 
 interface AdminStats {
@@ -86,8 +88,8 @@ export function Admin() {
             const { data } = await axs.post(endpoint);
             setActionMessage(data.message);
             fetchStats();
-        } catch (err: any) {
-            setActionMessage(err?.response?.data?.message ?? t("admin.fetchStatsError"));
+        } catch (err) {
+            setActionMessage((isAxiosError(err) ? err.response?.data?.message : undefined) ?? t("admin.fetchStatsError"));
         }
     }
 
@@ -315,7 +317,7 @@ export function Admin() {
                             <p style={{ fontSize: "11.5px", color: "#9b8c6e", marginBottom: "12px" }}>
                                 {t("admin.lastSyncResult", {
                                     inserted: stats.job.lastResult.insertedTotal ?? 0,
-                                    fixed: stats.job.lastResult.fixedTotal ?? 0,
+                                    fixed: stats.job.lastResult.updatedTotal ?? 0,
                                 })}
                             </p>
                         )}

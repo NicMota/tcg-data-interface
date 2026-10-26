@@ -1,79 +1,21 @@
-import { Router } from 'express'
-
-
-import { search_filter, SearchFilters } from './utils.js';
-
-import { validJwt, requireAdmin} from './middleware.js';
-import { login, register, getUserById } from './models/UserM.js'
-import { get_cards, get_price, get_card, get_sets, runCardSync, runPriceSync, getAdminStats } from './models/CardM.js';
+import { Router } from 'express';
+import { pagination, search_filter } from './utils.js';
+import { get_cards, get_price, get_card, get_sets } from './models/CardM.js';
 import { get_featured_cards, get_market_movers } from './models/MarketM.js';
 
-
-const cards_router = Router();
-
-
-cards_router.get('/cards',async (req,res)=>
-{   
-
-  const page = Number(req.query.page);
-  const limit = Number(req.query.limit);
-  const filter : SearchFilters = search_filter.parse(req.query);
-
-
-  const data = await get_cards(page,limit,filter);
-  res.send(data);
-})
-
-
-cards_router.get('/price/:id', async (req, res)=>{
-  
-  const id = req.params.id
-  const price = await get_price(id);
-  
-  res.send(price);
-
+const router = Router();
+router.get('/cards', async (req, res) => {
+  const { page, limit } = pagination.parse(req.query);
+  res.json(await get_cards(page, limit, search_filter.parse(req.query)));
 });
-cards_router.get('/cards/:card_id', async (req, res)=>
-{
-  const card_id = req.params.card_id;
-  const data = await get_card(card_id);
-
-  res.send(data);
-})
-
-cards_router.get('/sets', async (req, res)=>
-{
-  const sets = await get_sets();
-  res.send(sets);
-})
-
-
-cards_router.get('/cards/featured' ,  async (req, res)=>
-{
-  try{
-    const feat_cards = await get_featured_cards();
-  res.status(200).json(feat_cards);
-  }
-  catch (error: any) {
-    res.status(400).json({ message: error?.message ?? "Erro ao recuperar featured_cards." });
-  }
-
-})
-
-
-/* MARKET ROUTES*/
-cards_router.get('/market/movers', async (req, res)=>
-{
-  try{
-    const movers = await get_market_movers();
-    res.status(200).json(movers);
-  }catch(error : any)
-  {
-    res.status(500).json({ message: error?.message ?? "Erro ao buscar maiores variacoes" });
-  }
-})
-// Retorna os dados do usuário autenticado a partir do token enviado.
-
-
-
-export default cards_router;
+// Static routes must precede the card-id route.
+router.get('/cards/featured', async (_req, res) => res.json(await get_featured_cards()));
+router.get('/cards/:card_id', async (req, res) => {
+  const card = await get_card(req.params.card_id);
+  if (!card) { res.status(404).json({ message: 'Carta não encontrada.' }); return; }
+  res.json(card);
+});
+router.get('/price/:id', async (req, res) => res.json(await get_price(req.params.id)));
+router.get('/sets', async (_req, res) => res.json(await get_sets()));
+router.get('/market/movers', async (_req, res) => res.json(await get_market_movers()));
+export default router;

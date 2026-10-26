@@ -1,6 +1,8 @@
+/* eslint-disable react-refresh/only-export-components -- Context and its consumer hook share a module. */
 import {
     createContext,
     useContext,
+    useEffect,
     useMemo,
     useState,
     type ReactNode,
@@ -34,7 +36,7 @@ function detectDefaultLanguage(): Language {
 function resolve(path: string, lang: Language): unknown {
     return path
         .split(".")
-        .reduce<any>((acc, part) => (acc == null ? acc : acc[part]), translations[lang]);
+        .reduce<unknown>((acc, part) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined), translations[lang]);
 }
 
 function interpolate(template: string, vars?: Record<string, string | number>) {
@@ -46,6 +48,8 @@ function interpolate(template: string, vars?: Record<string, string | number>) {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
     const [language, setLanguageState] = useState<Language>(detectDefaultLanguage);
+
+    useEffect(() => { document.documentElement.lang = language === "pt" ? "pt-BR" : "en"; }, [language]);
 
     function setLanguage(lang: Language) {
         localStorage.setItem(STORAGE_KEY, lang);

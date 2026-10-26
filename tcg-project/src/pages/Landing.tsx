@@ -4,35 +4,21 @@ import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useEffect, useState } from "react";
 
-const sampleTicker = [
-    { name: "Ragavan, Nimble Pilferer", set: "MH2", price: 42.18, diff: 3.41 },
-    { name: "The One Ring", set: "LTR", price: 61.9, diff: -4.75 },
-    { name: "Solitude", set: "MH2", price: 24.6, diff: 1.15 },
-    { name: "Orcish Bowmasters", set: "MH3", price: 18.3, diff: -0.62 },
-    { name: "Wrenn and Six", set: "MH1", price: 33.05, diff: 2.02 },
-];
-
+import axs from '../axios';
+import type { MarketMover } from '../types';
 interface Step { title: string; body: string }
-interface Testimonial { quote: string; name: string; role: string }
-
 async function getMarketMovers() {
-    const response = await fetch(
-        'http://localhost:8000/movers'
-    );
-
-    if (!response.ok) {
-        throw new Error('Failed to fetch market movers');
-    }
-
-    return response.json();
+    return (await axs.get<MarketMover[]>('/market/movers')).data;
 }
 function Landing() {
     const { isAuthenticated, logout } = useAuth();
     const { t, tRaw } = useLanguage();
         
-    const [movers, setMovers] = useState([]);
+    const [marketError, setMarketError] = useState(false);
+    const [marketLoading, setMarketLoading] = useState(true);
+    const [movers, setMovers] = useState<MarketMover[]>([]);
     const steps = tRaw<Step[]>("landing.howItWorks");
-    const testimonials = tRaw<Testimonial[]>("landing.testimonials");
+
     
 
     useEffect(() => {
@@ -44,7 +30,8 @@ function Landing() {
                 setMovers(data);
             } catch (error) {
                 console.error(error);
-            }
+                setMarketError(true);
+            } finally { setMarketLoading(false); }
         }
 
         loadMovers();
@@ -213,19 +200,20 @@ function Landing() {
                         <span style={{ fontSize: "11px", color: "#6b6578" }}>{t("landing.updatedDaily")}</span>
                     </div>
                     <div className="flex flex-col divide-y" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
+                        {!movers.length && <p className="p-5 text-sm" role="status">{t(marketLoading ? "common.loading" : marketError ? "common.error" : "market.empty")}</p>}
                         {movers.map((c) => {
                             const positive = c?.change >= 0;
                             return (
                                 <div
-                                    key={c.name}
+                                    key={c.card_id}
                                     className="flex items-center justify-between px-5 py-3"
                                     style={{ borderTop: "1px solid rgba(212,175,55,0.08)" }}
                                 >
                                     <div>
                                         <p style={{ fontFamily: "'Cinzel', serif", fontSize: "13px", color: "#ede8d8" }}>
-                                            {c.card.name}
+                                            {c.card?.name}
                                         </p>
-                                        <p style={{ fontSize: "11px", color: "#6b6578" }}>{c.set}</p>
+                                        <p style={{ fontSize: "11px", color: "#6b6578" }}>{c.card?.set_name}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span style={{ fontFamily: "'Cinzel', serif", fontSize: "14px", color: "#d4af37" }}>
@@ -268,36 +256,6 @@ function Landing() {
                         </div>
                     ))}
                 </section>
-
-                {/* SOCIAL PROOF — imperfect rating + specific, attributable quotes */}
-                {/*}
-                <section className="text-center" style={{ marginBottom: "88px" }}>
-                    <div className="flex items-center justify-center gap-2" style={{ marginBottom: "8px" }}>
-                        <span style={{ color: "#d4af37", fontSize: "18px" }}>★★★★☆</span>
-                        <span style={{ fontSize: "13px", color: "#9b8c6e" }}>{t("landing.ratingLabel")}</span>
-                    </div>
-
-                    <div className="grid gap-5 sm:grid-cols-2" style={{ marginTop: "32px" }}>
-                        {testimonials.map((tm) => (
-                            <div
-                                key={tm.name}
-                                className="rounded-2xl p-5 text-left"
-                                style={{
-                                    background: "linear-gradient(160deg, #0f0e17 0%, #1a1628 100%)",
-                                    border: "1px solid rgba(212,175,55,0.15)",
-                                }}
-                            >
-                                <p style={{ fontSize: "14px", color: "#ede8d8", lineHeight: 1.6, marginBottom: "14px" }}>
-                                    "{tm.quote}"
-                                </p>
-                                <p style={{ fontSize: "12px", color: "#9b8c6e" }}>
-                                    <span style={{ color: "#d4af37" }}>{tm.name}</span> — {tm.role}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-                */}
 
                 {/* FINAL CTA — same action, repeated, short path to it */}
                 <section

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Context and its consumer hook share a module. */
 import {
     createContext,
     useContext,
@@ -28,6 +29,7 @@ interface AuthContextValue {
         remember?: boolean
     ) => Promise<void>;
     logout: () => void;
+    updateProfile: (name: string) => Promise<void>;
 }
 
 const TOKEN_KEY = "tcg_token";
@@ -108,6 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
     }
 
+    async function updateProfile(name: string) {
+        const { data } = await axs.patch("/me", { name });
+        setUser(data.user);
+    }
+
     function logout() {
         clearStoredToken();
         setUser(null);
@@ -122,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 login,
                 register,
                 logout,
+                updateProfile,
             }}
         >
             {children}
