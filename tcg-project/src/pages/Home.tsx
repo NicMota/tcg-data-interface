@@ -5,7 +5,8 @@ import { Card } from '../components/Card';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
-import Landing from './Landing';
+import type { TcgCard } from '../types';
+import { CollectionNav } from '../components/CollectionNav';
 
 const filterLabelStyle: React.CSSProperties = {
     fontSize: "11px",
@@ -30,10 +31,13 @@ function Home() {
     const { user, logout } = useAuth();
     const { t } = useLanguage();
 
-    const [cards, setCards] = useState([]);
+    const [cards, setCards] = useState<TcgCard[]>([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [itemsPerPage, setItemsPerPage] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [retry, setRetry] = useState(0);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [foil, setFoil] = useState<boolean | undefined>(undefined);
@@ -61,46 +65,49 @@ function Home() {
 
     useEffect(() => {
 
-        const fetchCards = async () => {
-
-            const { data } = await axs.get('/cards', {
-                params: {
-                    page: currentPage + 1,
-                    limit: itemsPerPage,
-                    name: search || undefined,
-                    foil: foil !== undefined ? foil : undefined,
-                    mana_cost: manaCost || undefined,
-                    set_code: setCode || undefined,
-                    rarity: rarity || undefined,
-                    released_from: releasedFrom || undefined,
-                    released_to: releasedTo || undefined,
-                    colors: colors.length ? colors.join(',') : undefined,
-                },
-            });
-
-            setCards(data.data);
-            setTotalPages(data.totalPages);
-        };
-
-        fetchCards();
-
-    }, [currentPage, itemsPerPage, search, foil, manaCost, setCode, rarity, releasedFrom, releasedTo, colors]);
-
-    useEffect(() => {
-        setCurrentPage(0);
-    }, [search, foil, manaCost, setCode, rarity, releasedFrom, releasedTo, colors]);
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                const { data } = await axs.get('/cards', {
+                    signal: controller.signal,
+                    params: {
+                        page: currentPage + 1, limit: itemsPerPage,
+                        name: search || undefined, foil,
+                        mana_cost: manaCost || undefined, set_code: setCode || undefined,
+                        rarity: rarity || undefined, released_from: releasedFrom || undefined,
+                        released_to: releasedTo || undefined,
+                        colors: colors.length ? colors.join(',') : undefined,
+                    },
+                });
+                if (!controller.signal.aborted) {
+                    setCards(data.data);
+                    setTotalPages(data.totalPages);
+                }
+            } catch {
+                if (!controller.signal.aborted) setError(true);
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        }, 250);
+        return () => { clearTimeout(timer); controller.abort(); };
+    }, [currentPage, itemsPerPage, search, foil, manaCost, setCode, rarity, releasedFrom, releasedTo, colors, retry]);
 
     function filterCards(e: ChangeEvent<HTMLInputElement>) {
         setSearch(e.target.value);
+        setCurrentPage(0);
     }
 
     function toggleColor(symbol: string) {
+        setCurrentPage(0);
         setColors(prev =>
             prev.includes(symbol) ? prev.filter(c => c !== symbol) : [...prev, symbol]
         );
     }
 
     function clearFilters() {
+        setCurrentPage(0);
         setFoil(undefined);
         setManaCost('');
         setSetCode('');
@@ -111,13 +118,13 @@ function Home() {
     }
 
     const hasActiveFilters =
-        !!foil || !!manaCost || !!setCode || !!rarity || !!releasedFrom || !!releasedTo || colors.length > 0;
+        foil !== undefined || !!manaCost || !!setCode || !!rarity || !!releasedFrom || !!releasedTo || colors.length > 0;
 
     // Pagination window
     const visiblePages = 5;
     const half = Math.floor(visiblePages / 2);
     let start = Math.max(0, currentPage - half);
-    let end = Math.min(totalPages - 1, start + visiblePages - 1);
+    const end = Math.min(totalPages - 1, start + visiblePages - 1);
     if (end - start < visiblePages - 1) start = Math.max(0, end - visiblePages + 1);
 
     function nextPage() { if (currentPage < totalPages - 1) setCurrentPage(p => p + 1); }
@@ -274,6 +281,7 @@ function Home() {
 
             <div className="relative max-w-7xl mx-auto px-6 py-8" style={{ zIndex: 1 }}>
 
+                <CollectionNav />
                 {/* SEARCH BAR */}
                 <div
                     className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center rounded-2xl p-4 mb-4"
@@ -393,7 +401,7 @@ function Home() {
                             <input
                                 type="text"
                                 value={manaCost}
-                                onChange={e => setManaCost(e.target.value)}
+                                onChange={e => { setManaCost(e.target.value); setCurrentPage(0); }}
                                 placeholder={t("home.manaCostPlaceholder")}
                                 style={{ ...filterInputStyle, width: "140px" }}
                             />
@@ -404,7 +412,7 @@ function Home() {
                             <label style={filterLabelStyle}>{t("home.collection")}</label>
                             <select
                                 value={setCode}
-                                onChange={e => setSetCode(e.target.value)}
+                                onChange={e => { setSetCode(e.target.value); setCurrentPage(0); }}
                                 style={{ ...filterInputStyle, width: "200px", cursor: "pointer" }}
                             >
                                 <option value="">{t("home.allCollections")}</option>
@@ -421,7 +429,7 @@ function Home() {
                             <label style={filterLabelStyle}>{t("home.rarity")}</label>
                             <select
                                 value={rarity}
-                                onChange={e => setRarity(e.target.value)}
+                                onChange={e => { setRarity(e.target.value); setCurrentPage(0); }}
                                 style={{ ...filterInputStyle, width: "150px", cursor: "pointer" }}
                             >
                                 <option value="">{t("home.allRarities")}</option>
@@ -440,7 +448,7 @@ function Home() {
                             <input
                                 type="date"
                                 value={releasedFrom}
-                                onChange={e => setReleasedFrom(e.target.value)}
+                                onChange={e => { setReleasedFrom(e.target.value); setCurrentPage(0); }}
                                 style={{ ...filterInputStyle, width: "160px", colorScheme: "dark" }}
                             />
                         </div>
@@ -449,7 +457,7 @@ function Home() {
                             <input
                                 type="date"
                                 value={releasedTo}
-                                onChange={e => setReleasedTo(e.target.value)}
+                                onChange={e => { setReleasedTo(e.target.value); setCurrentPage(0); }}
                                 style={{ ...filterInputStyle, width: "160px", colorScheme: "dark" }}
                             />
                         </div>
@@ -517,7 +525,7 @@ function Home() {
                 {/* Status bar */}
                 <div className="flex items-center justify-between mb-6">
                     <p style={{ fontSize: "12px", color: "#52525b", letterSpacing: "0.05em" }}>
-                        {t("home.pageOf", { current: currentPage + 1, total: totalPages })}
+                        {t("home.pageOf", { current: totalPages ? currentPage + 1 : 0, total: totalPages })}
                     </p>
                     {search && (
                         <p style={{ fontSize: "12px", color: "#9b8c6e" }}>
@@ -527,9 +535,9 @@ function Home() {
                 </div>
 
                 {/* CARDS GRID */}
-                {cards?.length > 0 ? (
+                {loading ? <p role="status">{t("common.loading")}</p> : error ? <div role="alert"><p>{t("common.error")}</p><button className="action" onClick={() => setRetry(v => v + 1)}>{t("common.retry")}</button></div> : cards?.length > 0 ? (
                     <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                        {cards.map((card: any) => (
+                        {cards.map((card) => (
                             <Card c={card} key={card.id} />
                         ))}
                     </div>
@@ -556,7 +564,7 @@ function Home() {
                 >
                     <button
                         onClick={previousPage}
-                        disabled={currentPage === 0}
+                        disabled={loading || currentPage === 0}
                         style={{
                             padding: "9px 18px",
                             borderRadius: "12px",
@@ -606,7 +614,7 @@ function Home() {
 
                     <button
                         onClick={nextPage}
-                        disabled={currentPage === totalPages - 1}
+                        disabled={loading || currentPage >= totalPages - 1}
                         style={{
                             padding: "9px 18px",
                             borderRadius: "12px",

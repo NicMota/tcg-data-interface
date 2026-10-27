@@ -1,85 +1,40 @@
-import prisma from "../db/db.js";
+import prisma from '../db/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import User from "../interfaces/user.interfaces.js";
+import type User from '../interfaces/user.interfaces.js';
 
-
-const secret = process.env.JWT_SECRET;
-
+export class AccountError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
 function stripPassword<T extends { password: string }>(user: T) {
-    const { password, ...safeUser } = user;
-    return safeUser;
+  const { password: _password, ...safeUser } = user;
+  return safeUser;
 }
-
 function signToken(user: { id: string; email: string }) {
-    return jwt.sign(
-        {
-            id: user.id,
-            email: user.email,
-        },
-        process.env.JWT_SECRET!,
-        {
-            expiresIn: "8h",
-        }
-    );
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is required');
+  return jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: '8h' });
 }
-
 export async function login(email: string, password: string) {
-    try {
-        const user = await prisma.user.findUnique({
-            where: { email },
-        });
-
-        if (!user) {
-            throw new Error("Usuário ou senha inválidos.");
-        }
-
-        const valid = await bcrypt.compare(password, user.password);
-
-        if (!valid) {
-            throw new Error("Usuário ou senha inválidos.");
-        }
-
-        const token = signToken(user);
-
-        return { token, user: stripPassword(user) };
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !await bcrypt.compare(password, user.password)) {
+    throw new AccountError('Usuário ou senha inválidos.', 401);
+  }
+  return { token: signToken(user), user: stripPassword(user) };
 }
-export async function register(user : User)
-{  
-    try {
-        const existing = await prisma.user.findUnique({ where: { email: user.email } });
-        if (existing) {
-            throw new Error("Este email já está cadastrado.");
-        }
-
-        const hashedPwd = await bcrypt.hash(user.password,10)
-        const created = await prisma.user.create({
-            data: {
-            ...user,
-            password: hashedPwd,
-            },
-        });
-
-        const token = signToken(created);
-
-        return { token, user: stripPassword(created) };
-    } catch (error) {
-        console.error(error);
-        throw error;
+export async function register(user: User) {
+  const password = await bcrypt.hash(user.password, 10);
+  try {
+    const created = await prisma.user.create({ data: { email: user.email, name: user.name, password } });
+    return { token: signToken(created), user: stripPassword(created) };
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      throw new AccountError('Este email já está cadastrado.', 409);
     }
+    throw error;
+  }
 }
-
 export async function getUserById(id: string) {
-    try {
-        const user = await prisma.user.findUnique({ where: { id } });
-        if (!user) return null;
-        return stripPassword(user);
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+  const user = await prisma.user.findUnique({ where: { id } });
+  return user ? stripPassword(user) : null;
 }

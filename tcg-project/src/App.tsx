@@ -1,4 +1,7 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { FavoritesProvider } from './context/FavoritesContext';
+import { Favorites } from './pages/Favorites';
+import { Profile } from './pages/Profile';
+import { BrowserRouter, Route, Routes, Link } from 'react-router-dom'
 import './App.css'
 import Home from './pages/Home'
 import { Charts } from './pages/Charts'
@@ -19,6 +22,7 @@ function App() {
     <LanguageProvider>
       <BrowserRouter>
         <AuthProvider>
+          <FavoritesProvider>
           <Routes>
             <Route path='/' element={<Landing/>}/>
             <Route path='/login' element={<Login/>} />
@@ -35,7 +39,11 @@ function App() {
             <Route path='/admin' element={
               <AdminRoute><Admin/></AdminRoute>
             } />
+            <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="*" element={<main className="app-page"><h1>404</h1><Link to="/">Magic TCG Tracker</Link></main>} />
           </Routes>
+          </FavoritesProvider>
         </AuthProvider>
       </BrowserRouter>
     </LanguageProvider>

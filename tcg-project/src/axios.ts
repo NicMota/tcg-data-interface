@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_SERVER_URL;
+const baseURL = import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
 // Kept in sync with AuthContext.tsx's TOKEN_KEY.
 const TOKEN_KEY = "tcg_token";
 

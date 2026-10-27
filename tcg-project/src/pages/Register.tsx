@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useState, type FormEvent, type CSSProperties } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -39,9 +40,9 @@ function Register() {
         try {
             await register(name, email, password, true);
             navigate("/cards", { replace: true });
-        } catch (err: any) {
+        } catch (err) {
             console.log(err);
-            setError(err?.response?.data?.message ?? t("register.errorGeneric"));
+            setError((isAxiosError(err) ? err.response?.data?.message : undefined) ?? t("register.errorGeneric"));
         } finally {
             setIsSubmitting(false);
         }

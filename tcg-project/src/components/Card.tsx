@@ -1,41 +1,14 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { useLanguage } from "../context/LanguageContext";
-import { Link } from "react-router-dom";
+import { useLanguage } from '../context/LanguageContext';
+import { Link } from 'react-router-dom';
+import type { TcgCard } from '../types';
+import { FavoriteButton } from './FavoriteButton';
 
-export function Card({ c }) {
-
+export function Card({ c }: { c: TcgCard }) {
     const { t } = useLanguage();
-    const [price, setPrice] = useState(0);
-    const [diff, setDiff] = useState(0);
-
-    useEffect(() => {
-
-        async function fetchPrice() {
-
-            try {
-
-                const { data } = await axios.get(
-                    `http://localhost:8000/price/${c.card_id}`
-                );
-
-                const today_price = data?.[0]?.price_usd ?? 0;
-                const last_day_price = data?.[1]?.price_usd ?? 0;
-
-
-                console.log(data);
-                setPrice(Number(today_price));
-                setDiff(Number(today_price - last_day_price));
-                
-            } catch (error) {
-
-                console.log(error);
-            }
-        }
-
-        fetchPrice();
-
-    }, []);
+    const latest = c.card_prices?.[0]?.price_usd ?? c.prices?.usd;
+    const previous = c.card_prices?.[1]?.price_usd;
+    const price = latest == null ? null : Number(latest);
+    const diff = price != null && previous != null ? price - Number(previous) : 0;
     const isZero = diff == 0;
     const isPositive = diff >= 0;
 
@@ -80,13 +53,14 @@ export function Card({ c }) {
             <div className="relative overflow-hidden" style={{ background: "#080710" }}>
 
                 <img
-                    src={c.image_uris?.normal}
+                    src={c.image_uris?.normal || "/card-placeholder.svg"}
+                    loading="lazy"
                     alt={c.name}
                     className="w-full object-cover"
                     style={{ display: "block", transition: "transform 0.5s ease" }}
                     onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.04)")}
                     onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                    onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/card-placeholder.svg"; }}
                 />
 
                 {/* Foil shimmer badge */}
@@ -166,7 +140,7 @@ export function Card({ c }) {
                             
                         }}
                     >
-                        ${price.toFixed(2)}
+                        {price == null ? "—" : `$${price.toFixed(2)}`}
                     </span>
                     {!isZero &&
                     <span
@@ -184,6 +158,7 @@ export function Card({ c }) {
                     </span>}
                 </div>
 
+                <FavoriteButton cardId={c.card_id} />
                 {/* View button */}
                 <Link
                     to={`/card/${c.card_id}`}

@@ -1,7 +1,3 @@
-import fs from 'fs';
-import {Pool} from 'pg';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import axios from 'axios';
 import { search_filter, SearchFilters } from '../utils.js';
 import "dotenv/config";
@@ -13,19 +9,6 @@ import chain from 'stream-chain';
 
 import axs from '../axios/client.js';
 import ScryfallCard from '../interfaces/card.interfaces.js';
-
-/* ideia: criar uma rotina,
-todo dia verificar se bulk data adiciona uma carta nova e adiciona-la a tabela cards
-apos isso buscar preco de todas as cartas incluindo as novas
-1-verificar novas cartas
-2-atualizar precos
-*/
-
-
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 
 function hasValidImage(card : ScryfallCard)
 {
@@ -99,7 +82,8 @@ export async function load_cards_data() {
   );
  
   const bulkInfo = await axios.get(
-    'https://api.scryfall.com/bulk-data/default_cards'
+    'https://api.scryfall.com/bulk-data/default_cards',
+    { headers: { 'User-Agent': 'TCGDataInterface/1.0', Accept: 'application/json' }, timeout: 30000 }
   );
  
   const url = bulkInfo.data.download_uri;
@@ -107,7 +91,9 @@ export async function load_cards_data() {
   const response = await axios({
     method: 'GET',
     url,
-    responseType: 'stream'
+    responseType: 'stream',
+    headers: { 'User-Agent': 'TCGDataInterface/1.0', Accept: 'application/json' },
+    timeout: 120000
   });
  
   const pipeline = chain([
@@ -127,7 +113,7 @@ export async function load_cards_data() {
  
     const card: ScryfallCard = item.value;
     const image_uris = resolveImageUris(card);
-    const score = calculateCardQualityScore(card);
+    const score = calculateCardQualityScore({ ...card, image_uris });
  
     const existing = existingByCardId.get(card.id);
  
@@ -156,8 +142,8 @@ export async function load_cards_data() {
         scryfall_uri: card.scryfall_uri,
         mana_cost: card.mana_cost,
         type_line: card.type_line,
-        colors: card.colors,
-        color_identity: card.color_identity,
+        colors: card.colors ?? [],
+        color_identity: card.color_identity ?? [],
         foil: card.foil,
         nonfoil: card.nonfoil,
         set_code: card.set,
@@ -232,11 +218,9 @@ export async function get_price(id: string) {
       take: 30
     });
 
-    console.log(prices);
-    return prices.length ? prices : null;
+    return prices;
   } catch (err) {
-    console.log(err);
-    return null;
+    throw err;
   }
 }
 export async function get_card(id: string) {
@@ -254,7 +238,7 @@ export async function get_card(id: string) {
       prices
     };
   } catch (err) {
-    console.log(err);
+    throw err;
   }
 }
 //melhorar esse metodo
@@ -282,7 +266,17 @@ export async function update_prices() {
     streamArray()
   ])
 
-  const batch: any[] = [];
+  const batch: Prisma.card_pricesCreateManyInput[] = [];
+  const snapshots: { card_id: string; prices: Prisma.InputJsonValue }[] = [];
+  const date = new Date(new Date().toISOString().slice(0, 10));
+  async function flush() {
+    await prisma.$transaction([
+      prisma.card_prices.createMany({ data: batch, skipDuplicates: true }),
+      ...snapshots.map(row => prisma.cards.update({ where: { card_id: row.card_id }, data: { prices: row.prices } })),
+    ]);
+    batch.length = 0;
+    snapshots.length = 0;
+  }
   const batchSize = 100;
   for await (const item of pipeline) {
     const card = item.value;
@@ -293,31 +287,18 @@ export async function update_prices() {
     }
 
     const price = card.prices?.usd;
+    snapshots.push({ card_id: card.id, prices: card.prices ?? {} });
     batch.push({
       card_id: card.id,
-      price_usd: price ? Number(price) : null,
-      date: new Date()
+      price_usd: price != null && Number.isFinite(Number(price)) ? Number(price) : null,
+      date
     })
     if(batch.length>=batchSize)
     {
-        await prisma.card_prices.createMany({
-            data:batch,
-            skipDuplicates:true
-        })
-        
-        console.log(`Updated ${batch.length}`);
-        batch.length = 0;
+        await flush();
     }
   }
-
-
-  if (batch.length > 0) {
-
-    await prisma.card_prices.createMany({
-      data: batch,
-      skipDuplicates: true
-    });
-  }
+  if (batch.length > 0) await flush();
   console.log('updated')
   console.log(`Updated(${skippedTotal} ignorados - card_id ainda não existe em cards`);
 }
@@ -357,6 +338,7 @@ export function runCardSync() {
   jobStatus.startedAt = new Date().toISOString();
   jobStatus.finishedAt = null;
   jobStatus.error = null;
+  jobStatus.lastResult = null;
 
   load_cards_data()
     .then(result => {
@@ -384,6 +366,7 @@ export function runPriceSync() {
   jobStatus.startedAt = new Date().toISOString();
   jobStatus.finishedAt = null;
   jobStatus.error = null;
+  jobStatus.lastResult = null;
 
   update_prices()
     .then(() => {
@@ -426,12 +409,12 @@ export async function getAdminStats() {
 
 export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}) {
   try {
-    const where : any = {};
+    const where: Prisma.cardsWhereInput = {};
     if(filter.name)
     {
       where.name = {contains:filter.name,mode:'insensitive'}
     }
-    if(filter.foil)
+    if(filter.foil !== undefined)
     {
       where.foil = filter.foil;
     }
@@ -473,7 +456,8 @@ export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: {quality_score: 'desc'}
+      orderBy: [{quality_score: 'desc'}, {card_id: 'asc'}],
+      include: { card_prices: { orderBy: { date: 'desc' }, take: 2 } }
     });
 
     // NOTE: previously this counted every card regardless of filter, which
@@ -482,10 +466,11 @@ export async function get_cards(page = 1, limit = 20,filter : SearchFilters = {}
 
     return {
       data,
+      total,
       totalPages: Math.ceil(total / limit)
     };
   } catch (err) {
-    console.log(err);
+    throw err;
   }
 }
 
@@ -500,8 +485,25 @@ export async function get_sets() {
 
     return sets;
   } catch (err) {
-    console.log(err);
-    return [];
+    throw err;
   }
 }
 
+
+export function runDailySync() {
+  if (jobStatus.running) return { started: false };
+  Object.assign(jobStatus, { running: true, job: 'cards', startedAt: new Date().toISOString(),
+    finishedAt: null, error: null, lastResult: null });
+  void load_cards_data().then(async result => {
+    jobStatus.lastResult = result;
+    jobStatus.job = 'prices';
+    await update_prices();
+  }).catch(error => {
+    console.error(error);
+    jobStatus.error = error instanceof Error ? error.message : 'Falha na sincronização.';
+  }).finally(() => {
+    jobStatus.running = false;
+    jobStatus.finishedAt = new Date().toISOString();
+  });
+  return { started: true };
+}

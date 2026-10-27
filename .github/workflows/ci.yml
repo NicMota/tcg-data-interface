@@ -1,0 +1,37 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tcg
+          POSTGRES_PASSWORD: tcg
+          POSTGRES_DB: tcg_test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U tcg" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tcg:tcg@localhost:5432/tcg_test
+      TEST_DATABASE_URL: postgresql://tcg:tcg@localhost:5432/tcg_test
+      JWT_SECRET: ci-test-secret-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            tcg-project/package-lock.json
+      - run: npm ci --prefix server
+      - run: npm ci --prefix tcg-project
+      - run: npm run db:migrate --prefix server
+      - run: npm run build --prefix server
+      - run: npm test --prefix server
+      - run: npm run lint --prefix tcg-project
+      - run: npm run build --prefix tcg-project
+      - run: npx playwright install --with-deps chromium
+        working-directory: tcg-project
+      - run: npm run test:e2e --prefix tcg-project

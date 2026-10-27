@@ -1,6 +1,9 @@
+import type { TcgCard, PriceRecord } from '../types';
+import { FavoriteButton } from '../components/FavoriteButton';
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CardChart } from "../components/CardChart";
+import { lazy, Suspense } from "react";
+const CardChart = lazy(() => import("../components/CardChart").then(module => ({ default: module.CardChart })));
 import axs from "../axios";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
@@ -10,42 +13,47 @@ export function CardInfo() {
     const { card_id } = useParams();
     const { t } = useLanguage();
 
-    const [card, setCard] = useState<any>({});
-    const [priceData, setPriceData] = useState({ prices: [], dates: [] });
+    const [card, setCard] = useState<TcgCard | null>(null);
+    const [priceData, setPriceData] = useState<{ prices: (number | null)[]; dates: string[] }>({ prices: [], dates: [] });
     const [loading, setLoading] = useState(true);
 
+    const [error, setError] = useState(false);
+    const [retry, setRetry] = useState(0);
     useEffect(() => {
+        const controller = new AbortController();
+        setLoading(true); setError(false);
 
         async function fetchData() {
 
             try {
 
-                const { data } = await axs.get(`/cards/${card_id}`);
+                const { data } = await axs.get(`/cards/${card_id}`, { signal: controller.signal });
 
                 setCard(data.card_info);
 
-                const formatted = { prices: [], dates: [] };
+                const formatted: { prices: (number | null)[]; dates: string[] } = { prices: [], dates: [] };
 
-                data.prices?.forEach((e: any) => {
-                    formatted.prices.push(e.price_usd);
-                    formatted.dates.push(new Date(e.date).toLocaleDateString());
+                data.prices?.forEach((e: PriceRecord) => {
+                    formatted.prices.push(e.price_usd == null ? null : Number(e.price_usd));
+                    formatted.dates.push(e.date);
                 });
 
                 setPriceData(formatted);
 
             } catch (err) {
-                console.log(err);
+                if (!controller.signal.aborted) { console.log(err); setError(true); }
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
         fetchData();
 
-    }, []);
+        return () => controller.abort();
+    }, [card_id, retry]);
 
-    const currentPrice = priceData.prices.at(0) ?? 0;
-    const prevPrice = priceData.prices.at(1) ?? 0;
+    const currentPrice = priceData.prices.at(0);
+    const prevPrice = priceData.prices.at(1);
     const priceDiff = Number(currentPrice) - Number(prevPrice);
     const isPositive = priceDiff >= 0;
 
@@ -162,7 +170,7 @@ export function CardInfo() {
                             {t("cardInfo.consulting")}
                         </p>
                     </div>
-                ) : (
+                ) : error || !card ? <div role="alert"><p>{t("common.error")}</p><button className="action" onClick={() => setRetry(v => v + 1)}>{t("common.retry")}</button></div> : (
 
                     <div
                         className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
@@ -186,7 +194,7 @@ export function CardInfo() {
                             ))}
 
                             <img
-                                src={card.image_uris?.normal}
+                                src={card.image_uris?.normal || "/card-placeholder.svg"}
                                 alt={card.name}
                                 className="w-full rounded-xl mx-auto"
                                 style={{
@@ -194,7 +202,7 @@ export function CardInfo() {
                                     display: "block",
                                     boxShadow: "0 12px 48px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.06)",
                                 }}
-                                onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                                onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/card-placeholder.svg"; }}
                             />
 
                             <div className="mt-7">
@@ -216,6 +224,7 @@ export function CardInfo() {
                                     {card.type_line}
                                 </p>
 
+                                <FavoriteButton cardId={card.card_id} />
                                 {/* Separator */}
                                 <div style={{
                                     height: "1px",
@@ -278,7 +287,7 @@ export function CardInfo() {
                                 </h3>
 
                                 {/* Live price summary */}
-                                {priceData.prices.length > 0 && (
+                                {currentPrice != null && (
                                     <div className="text-right">
                                         <p
                                             style={{
@@ -291,7 +300,7 @@ export function CardInfo() {
                                         >
                                             ${Number(currentPrice).toFixed(2)}
                                         </p>
-                                        <p
+                                        {prevPrice != null && <p
                                             style={{
                                                 fontSize: "12px",
                                                 marginTop: "4px",
@@ -299,8 +308,8 @@ export function CardInfo() {
                                                 color: isPositive ? "#6ee7b7" : "#fca5a5",
                                             }}
                                         >
-                                            {isPositive ? "▲" : "▼"} ${Math.abs(priceDiff).toFixed(2)} {t("cardInfo.today")}
-                                        </p>
+                                            {isPositive ? "▲" : "▼"} ${Math.abs(priceDiff).toFixed(2)} {t("market.change")}
+                                        </p>}
                                     </div>
                                 )}
                             </div>
@@ -312,7 +321,7 @@ export function CardInfo() {
                                 marginBottom: "20px",
                             }} />
 
-                            <CardChart price_info={priceData} />
+                            <Suspense fallback={<p>{t("common.loading")}</p>}><CardChart price_info={priceData} /></Suspense>
 
                         </div>
 

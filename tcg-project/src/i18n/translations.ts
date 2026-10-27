@@ -2,7 +2,18 @@ export type Language = "en" | "pt";
 
 export const translations = {
     en: {
+        common: {"loading": "Loading…", "error": "Could not load or save data. Please try again.", "retry": "Try again"},
+        favorites: {"add": "Save favorite", "remove": "Remove favorite", "empty": "No favorites yet. Save a card from the catalog to follow it here."},
+        profile: {"name": "Name", "save": "Save profile", "saved": "Profile updated."},
+        market: {"empty": "No price changes yet. Two daily price snapshots are needed.", "description": "Largest percentage changes between the two latest available daily snapshots. Prices in USD, nonfoil. Open a card to see its history.", "previous": "Previous", "current": "Latest", "change": "Change"},
+
         nav: {
+            cards: "Cards",
+            favorites: "Favorites",
+            charts: "Market",
+            profile: "Profile",
+            collection: "Collection navigation",
+
             signIn: "Sign in",
             startFree: "Start free",
             enterArchives: "Enter the archives",
@@ -117,9 +128,6 @@ export const translations = {
             nonFoil: "Non-Foil",
             today: "today",
         },
-        common: {
-            loading: "Loading…",
-        },
         admin: {
             title: "Admin Panel",
             subtitle: "Data sync & site operations",
@@ -149,7 +157,18 @@ export const translations = {
         },
     },
     pt: {
+        common: {"loading": "Carregando…", "error": "Não foi possível carregar ou salvar os dados. Tente novamente.", "retry": "Tentar novamente"},
+        favorites: {"add": "Salvar favorito", "remove": "Remover favorito", "empty": "Nenhum favorito ainda. Salve uma carta do catálogo para acompanhá-la aqui."},
+        profile: {"name": "Nome", "save": "Salvar perfil", "saved": "Perfil atualizado."},
+        market: {"empty": "Ainda não há variações. São necessários dois registros diários de preços.", "description": "Maiores variações entre os dois últimos registros diários disponíveis. Preços em USD, sem foil. Abra uma carta para ver seu histórico.", "previous": "Anterior", "current": "Mais recente", "change": "Variação"},
+
         nav: {
+            cards: "Cartas",
+            favorites: "Favoritos",
+            charts: "Mercado",
+            profile: "Perfil",
+            collection: "Navegação da coleção",
+
             signIn: "Entrar",
             startFree: "Começar grátis",
             enterArchives: "Entrar nos arquivos",
@@ -263,9 +282,6 @@ export const translations = {
             foil: "✦ Foil",
             nonFoil: "Não-foil",
             today: "hoje",
-        },
-        common: {
-            loading: "Carregando…",
         },
         admin: {
             title: "Painel Administrativo",
