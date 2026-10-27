@@ -3,9 +3,7 @@ import { search_filter, SearchFilters } from '../utils.js';
 import "dotenv/config";
 import prisma from '../db/db.js';
 import { Prisma } from '@prisma/client';
-import { parser } from 'stream-json';
-import { streamArray } from 'stream-json/streamers/stream-array.js';
-import chain from 'stream-chain';
+import { bulkDownload, readBulkCards } from '../bulk.js';
 
 import axs from '../axios/client.js';
 import ScryfallCard from '../interfaces/card.interfaces.js';
@@ -86,7 +84,8 @@ export async function load_cards_data() {
     { headers: { 'User-Agent': 'TCGDataInterface/1.0', Accept: 'application/json' }, timeout: 30000 }
   );
  
-  const url = bulkInfo.data.download_uri;
+  const format = bulkDownload(bulkInfo.data);
+  const url = format.url;
  
   const response = await axios({
     method: 'GET',
@@ -96,11 +95,7 @@ export async function load_cards_data() {
     timeout: 120000
   });
  
-  const pipeline = chain([
-    response.data,
-    parser(),
-    streamArray()
-  ]);
+  const pipeline = readBulkCards(response.data, format);
  
   const insertBatch: any[] = [];
   const updateBatch: { card_id: string; quality_score?: number; image_uris?: any }[] = [];
@@ -111,7 +106,7 @@ export async function load_cards_data() {
  
   for await (const item of pipeline) {
  
-    const card: ScryfallCard = item.value;
+    const card: ScryfallCard = item;
     const image_uris = resolveImageUris(card);
     const score = calculateCardQualityScore({ ...card, image_uris });
  
@@ -253,18 +248,15 @@ export async function update_prices() {
     let skippedTotal = 0;
 
     const bulkInfo = await axs.get('https://api.scryfall.com/bulk-data/default_cards');
-    const url = bulkInfo.data.download_uri;
+    const format = bulkDownload(bulkInfo.data);
+  const url = format.url;
 
 
   const cards = await axs.get(url,{
     responseType:'stream'
   });
 
-  const pipeline = chain([
-    cards.data,
-    parser(),
-    streamArray()
-  ])
+  const pipeline = readBulkCards(cards.data, format);
 
   const batch: Prisma.card_pricesCreateManyInput[] = [];
   const snapshots: { card_id: string; prices: Prisma.InputJsonValue }[] = [];
@@ -279,7 +271,7 @@ export async function update_prices() {
   }
   const batchSize = 100;
   for await (const item of pipeline) {
-    const card = item.value;
+    const card = item;
 
     if (!existingCardIds.has(card.id)) {
       skippedTotal++;
