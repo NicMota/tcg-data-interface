@@ -15,6 +15,7 @@ model card_prices {
   cards      cards?    @relation(fields: [card_id], references: [card_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([card_id, date])
+  @@index([date], map: "card_prices_date_idx")
 }
 model User{
   id  String @id @default(uuid())
@@ -26,6 +27,7 @@ model User{
   isAdmin Boolean @default(false)
   emailConfirmed Boolean @default(false)
   favorites Favorite[]
+  stockMovements StockMovement[]
 }
 
 model cards {
@@ -53,6 +55,7 @@ model cards {
   quality_score  Int            @default(0)
   card_prices      card_prices[]
   favorites        Favorite[]
+  inventory        InventoryItem[]
 }
 
 model Favorite {
@@ -62,4 +65,52 @@ model Favorite {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   card cards @relation(fields: [cardId], references: [card_id], onDelete: Cascade)
   @@id([userId, cardId])
+}
+
+// One deployment represents one store; all administrators share this inventory.
+model InventoryItem {
+  id String @id @default(uuid())
+  sku String @unique
+  cardId String?
+  name String
+  setCode String @default("")
+  condition String @default("NM")
+  language String @default("EN")
+  finish String @default("nonfoil")
+  quantity Int @default(0)
+  reserved Int @default(0)
+  costBrl Decimal @default(0) @db.Decimal(12, 2)
+  priceBrl Decimal @default(0) @db.Decimal(12, 2)
+  reorderPoint Int @default(2)
+  location String @default("")
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  card cards? @relation(fields: [cardId], references: [card_id], onDelete: SetNull)
+  movements StockMovement[]
+  @@index([name])
+}
+
+model StockMovement {
+  id String @id @default(uuid())
+  itemId String
+  actorId String
+  type String
+  quantityDelta Int
+  reservedDelta Int @default(0)
+  quantityAfter Int
+  reservedAfter Int
+  reason String
+  createdAt DateTime @default(now())
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([itemId, createdAt])
+}
+
+model StockImport {
+  id String @id @default(uuid())
+  digest String @unique
+  filename String
+  rowCount Int
+  createdAt DateTime @default(now())
 }

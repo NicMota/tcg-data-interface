@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { gzipSync } from 'node:zlib';
 
 test('API integration', { skip: !process.env.TEST_DATABASE_URL }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
@@ -42,10 +43,10 @@ test('API integration', { skip: !process.env.TEST_DATABASE_URL }, async t => {
       nonfoil: true, colors: ['U'], color_identity: ['U'], rarity: 'rare', prices: { usd: '2.50' },
       card_faces: [{ image_uris: { normal: 'https://example.com/card.png' } }] }];
     await t.test('bulk import handles double-faced cards and idempotent snapshots', async () => {
-      axios.get = (async () => ({ data: { download_uri: 'https://example.com/bulk' } })) as typeof axios.get;
-      axios.defaults.adapter = async config => ({ data: Readable.from([JSON.stringify(bulk)]), status: 200, statusText: 'OK', headers: {}, config });
+      axios.get = (async () => ({ data: { jsonl_download_uri: 'https://example.com/bulk.jsonl.gz' } })) as typeof axios.get;
+      axios.defaults.adapter = async config => ({ data: Readable.from([gzipSync(bulk.map(card => JSON.stringify(card)).join('\n'))]), status: 200, statusText: 'OK', headers: {}, config });
       await load_cards_data(); await load_cards_data();
-      upstream.get = (async (url: string) => ({ data: url.includes('default_cards') ? { download_uri: 'https://example.com/bulk' } : Readable.from([JSON.stringify(bulk)]) })) as typeof upstream.get;
+      upstream.get = (async (url: string) => ({ data: url.includes('default_cards') ? { jsonl_download_uri: 'https://example.com/bulk.jsonl.gz' } : Readable.from([gzipSync(bulk.map(card => JSON.stringify(card)).join('\n'))]) })) as typeof upstream.get;
       await update_prices(); await update_prices();
       assert.equal(await prisma.cards.count({ where: { card_id: cardId } }), 1);
       assert.equal(await prisma.card_prices.count({ where: { card_id: cardId } }), 1);

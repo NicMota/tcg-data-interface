@@ -1,304 +1,145 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useCopy } from "../i18n/useCopy";
 import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { Brand } from "../components/AppShell";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
-import { useEffect, useState } from "react";
-
-import axs from '../axios';
-import type { MarketMover } from '../types';
-interface Step { title: string; body: string }
-async function getMarketMovers() {
-    return (await axs.get<MarketMover[]>('/market/movers')).data;
-}
-function Landing() {
-    const { isAuthenticated, logout } = useAuth();
-    const { t, tRaw } = useLanguage();
-        
-    const [marketError, setMarketError] = useState(false);
-    const [marketLoading, setMarketLoading] = useState(true);
-    const [movers, setMovers] = useState<MarketMover[]>([]);
-    const steps = tRaw<Step[]>("landing.howItWorks");
-
-    
-
-    useEffect(() => {
-    
-        async function loadMovers() {
-            try {
-                const data = await getMarketMovers();
-
-                setMovers(data);
-            } catch (error) {
-                console.error(error);
-                setMarketError(true);
-            } finally { setMarketLoading(false); }
-        }
-
-        loadMovers();
-    }, []);
-    
-    return (
-        <div
-            style={{
-                background: "#080710",
-                color: "#ede8d8",
-                fontFamily: "'DM Sans', sans-serif",
-                minHeight: "100vh",
-            }}
-        >
-            {/* Ambient glow blobs, same recipe as Home / Login / Register */}
-            <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-                <div style={{
-                    position: "absolute", top: "-15%", right: "10%",
-                    width: "600px", height: "600px", borderRadius: "50%",
-                    background: "radial-gradient(circle, rgba(212,175,55,0.035) 0%, transparent 65%)",
-                }} />
-                <div style={{
-                    position: "absolute", bottom: "10%", left: "-5%",
-                    width: "450px", height: "450px", borderRadius: "50%",
-                    background: "radial-gradient(circle, rgba(100,60,180,0.04) 0%, transparent 70%)",
-                }} />
+import { Icon } from "../components/Icon";
+export default function Landing() {
+  const copy = useCopy(),
+    { isAuthenticated, isLoading } = useAuth();
+  if (!isLoading && isAuthenticated) return <Navigate to="/insights" replace />;
+  return (
+    <div className="landing-page">
+      <header className="landing-header">
+        <Brand />
+        <nav>
+          <a href="#perspective">{copy("The perspective", "A perspectiva")}</a>
+          <LanguageSwitcher />
+          <Link to="/login">{copy("Sign in", "Entrar")}</Link>
+          <Link className="action primary" to="/register">
+            {copy("Get started", "Começar")}
+            <Icon name="arrow" size={16} />
+          </Link>
+        </nav>
+      </header>
+      <main>
+        <section className="landing-hero">
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <span className="tiny-dot" />
+              {copy(
+                "BUILT FOR THE OTHER SIDE OF THE COUNTER",
+                "PARA QUEM ESTÁ DO OUTRO LADO DO BALCÃO",
+              )}
+            </p>
+            <h1>
+              {copy("Good cards.", "Boas cartas.")}
+              <br />
+              <em>{copy("Better decisions.", "Melhores decisões.")}</em>
+            </h1>
+            <p>
+              {copy(
+                "Turn price history into perspective. Discover the moves that matter and give every card in your store a place.",
+                "Transforme histórico de preços em perspectiva. Descubra os movimentos que importam e encontre um lugar para cada carta da sua loja.",
+              )}
+            </p>
+            <div className="button-row">
+              <Link className="action primary large" to="/register">
+                {copy("Find your next move", "Encontre sua próxima jogada")}
+                <Icon name="arrow" size={19} />
+              </Link>
+              <Link className="text-button" to="/login">
+                {copy("Open your workspace", "Abrir seu espaço")} ↗
+              </Link>
             </div>
-
-            {/* HEADER */}
-            <header
-                className="sticky top-0"
-                style={{
-                    zIndex: 50,
-                    borderBottom: "1px solid rgba(212,175,55,0.12)",
-                    background: "rgba(8,7,16,0.9)",
-                    backdropFilter: "blur(20px)",
-                }}
-            >
-                <div className="max-w-7xl mx-auto px-6 flex items-center gap-4" style={{ height: "72px" }}>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                            <polygon points="14,2 26,9 26,19 14,26 2,19 2,9" stroke="#d4af37" strokeWidth="1.5" fill="none" opacity="0.8" />
-                            <polygon points="14,7 21,11 21,17 14,21 7,17 7,11" stroke="#d4af37" strokeWidth="0.8" fill="rgba(212,175,55,0.06)" />
-                            <circle cx="14" cy="14" r="2.5" fill="#d4af37" opacity="0.9" />
-                        </svg>
-                        <Link to={'/'}>
-                            <h1 style={{
-                                fontFamily: "'Cinzel', serif", fontSize: "18px", fontWeight: 700,
-                                letterSpacing: "0.2em",
-                                background: "linear-gradient(135deg, #d4af37 0%, #f0d060 50%, #9b7e2c 100%)",
-                                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                                whiteSpace: "nowrap",
-                            }}>
-                                MAGIC TCG TRACKER
-                            </h1>
-                        </Link>
-                    </div>
-
-                    <div style={{ flex: 1 }} />
-
-                    <LanguageSwitcher />
-
-                    {isAuthenticated ? (
-                        <>
-                            <Link
-                                to="/cards"
-                                style={{
-                                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em",
-                                    textTransform: "uppercase", fontFamily: "'Cinzel', serif",
-                                    padding: "9px 16px", borderRadius: "10px",
-                                    background: "linear-gradient(135deg, #d4af37, #b8960c)",
-                                    color: "#080710", textDecoration: "none", whiteSpace: "nowrap",
-                                }}
-                            >
-                                {t("nav.enterArchives")}
-                            </Link>
-                            <button
-                                onClick={logout}
-                                style={{
-                                    fontSize: "13px", color: "#9b8c6e", background: "transparent",
-                                    border: "none", cursor: "pointer",
-                                }}
-                            >
-                                {t("nav.logout")}
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/login" style={{ fontSize: "13px", color: "#9b8c6e", textDecoration: "none", whiteSpace: "nowrap" }}>
-                                {t("nav.signIn")}
-                            </Link>
-                            <Link
-                                to="/register"
-                                style={{
-                                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em",
-                                    textTransform: "uppercase", fontFamily: "'Cinzel', serif",
-                                    padding: "9px 16px", borderRadius: "10px",
-                                    background: "linear-gradient(135deg, #d4af37, #b8960c)",
-                                    color: "#080710", textDecoration: "none", whiteSpace: "nowrap",
-                                }}
-                            >
-                                {t("nav.startFree")}
-                            </Link>
-                        </>
-                    )}
-                </div>
-            </header>
-
-            <main className="relative max-w-5xl mx-auto px-6" style={{ zIndex: 1 }}>
-
-                {/* HERO — opens on the problem, not the feature */}
-                <section className="text-center" style={{ paddingTop: "88px", paddingBottom: "56px" }}>
-                    <p style={{
-                        fontSize: "12px", letterSpacing: "0.2em", color: "#9b8c6e",
-                        textTransform: "uppercase", marginBottom: "18px",
-                    }}>
-                        {t("landing.tag")}
-                    </p>
-                    <h2 style={{
-                        fontFamily: "'Cinzel', serif", fontWeight: 700,
-                        fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2,
-                        maxWidth: "760px", margin: "0 auto 20px",
-                    }}>
-                        {t("landing.heroTitleBefore")}{" "}
-                        <span style={{ color: "#d4af37" }}>{t("landing.heroTitleHighlight")}</span>
-                    </h2>
-                    <p style={{
-                        fontSize: "16px", color: "#9b8c6e", maxWidth: "560px",
-                        margin: "0 auto 32px", lineHeight: 1.6,
-                    }}>
-                        {t("landing.heroSubtitle")}
-                    </p>
-
-                    <Link
-                        to="/register"
-                        className="inline-block"
-                        style={{
-                            padding: "14px 28px", borderRadius: "12px",
-                            fontSize: "13px", fontWeight: 700, letterSpacing: "0.08em",
-                            textTransform: "uppercase", fontFamily: "'Cinzel', serif",
-                            background: "linear-gradient(135deg, #d4af37, #b8960c)",
-                            color: "#080710", textDecoration: "none",
-                            boxShadow: "0 0 24px rgba(212,175,55,0.3)",
-                        }}
-                    >
-                        {t("landing.ctaPrimary")}
-                    </Link>
-                    <p style={{ fontSize: "12px", color: "#6b6578", marginTop: "10px" }}>
-                        {t("landing.ctaSub")}
-                    </p>
-                </section>
-
-                {/* PROOF STRIP — demonstrates the product instead of just claiming it */}
-                <section
-                    className="rounded-2xl overflow-hidden"
-                    style={{
-                        border: "1px solid rgba(212,175,55,0.15)",
-                        background: "linear-gradient(160deg, #0f0e17 0%, #1a1628 100%)",
-                        marginBottom: "72px",
-                    }}
-                >
-                    <div className="flex items-center justify-between px-5 pt-4">
-                        <span style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#6b6578", textTransform: "uppercase" }}>
-                            {t("landing.liveMovers")}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "#6b6578" }}>{t("landing.updatedDaily")}</span>
-                    </div>
-                    <div className="flex flex-col divide-y" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
-                        {!movers.length && <p className="p-5 text-sm" role="status">{t(marketLoading ? "common.loading" : marketError ? "common.error" : "market.empty")}</p>}
-                        {movers.map((c) => {
-                            const positive = c?.change >= 0;
-                            return (
-                                <div
-                                    key={c.card_id}
-                                    className="flex items-center justify-between px-5 py-3"
-                                    style={{ borderTop: "1px solid rgba(212,175,55,0.08)" }}
-                                >
-                                    <div>
-                                        <p style={{ fontFamily: "'Cinzel', serif", fontSize: "13px", color: "#ede8d8" }}>
-                                            {c.card?.name}
-                                        </p>
-                                        <p style={{ fontSize: "11px", color: "#6b6578" }}>{c.card?.set_name}</p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span style={{ fontFamily: "'Cinzel', serif", fontSize: "14px", color: "#d4af37" }}>
-                                            ${c.current_price?.toFixed(2)}
-                                        </span>
-                                        <span style={{
-                                            fontSize: "12px", fontWeight: 600, padding: "3px 9px", borderRadius: "6px",
-                                            color: positive ? "#6ee7b7" : "#fca5a5",
-                                            background: positive ? "rgba(52,211,153,0.1)" : "rgba(248,113,113,0.1)",
-                                            border: `1px solid ${positive ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
-                                        }}>
-                                            {positive ? "▲" : "▼"} {Math.abs(c.change).toFixed(2)}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* HOW IT WORKS — designed for skimming, not reading */}
-                <section className="grid gap-6 sm:grid-cols-3" style={{ marginBottom: "80px" }}>
-                    {steps.map((s, i) => (
-                        <div key={s.title}>
-                            <span style={{
-                                fontFamily: "'Cinzel', serif", fontSize: "12px", color: "#d4af37",
-                                letterSpacing: "0.1em",
-                            }}>
-                                0{i + 1}
-                            </span>
-                            <h3 style={{
-                                fontFamily: "'Cinzel', serif", fontSize: "16px", margin: "8px 0 6px",
-                                color: "#ede8d8",
-                            }}>
-                                {s.title}
-                            </h3>
-                            <p style={{ fontSize: "13px", color: "#9b8c6e", lineHeight: 1.6 }}>
-                                {s.body}
-                            </p>
-                        </div>
-                    ))}
-                </section>
-
-                {/* FINAL CTA — same action, repeated, short path to it */}
-                <section
-                    className="text-center rounded-2xl"
-                    style={{
-                        border: "1px solid rgba(212,175,55,0.18)",
-                        background: "linear-gradient(160deg, #0f0e17 0%, #1a1628 100%)",
-                        padding: "56px 24px",
-                        marginBottom: "48px",
-                    }}
-                >
-                    <h3 style={{
-                        fontFamily: "'Cinzel', serif", fontSize: "24px", marginBottom: "12px",
-                    }}>
-                        {t("landing.finalCtaTitle")}
-                    </h3>
-                    <p style={{ fontSize: "14px", color: "#9b8c6e", marginBottom: "24px" }}>
-                        {t("landing.finalCtaSub")}
-                    </p>
-                    <Link
-                        to="/register"
-                        className="inline-block"
-                        style={{
-                            padding: "13px 26px", borderRadius: "12px",
-                            fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em",
-                            textTransform: "uppercase", fontFamily: "'Cinzel', serif",
-                            background: "linear-gradient(135deg, #d4af37, #b8960c)",
-                            color: "#080710", textDecoration: "none",
-                            boxShadow: "0 0 20px rgba(212,175,55,0.25)",
-                        }}
-                    >
-                        {t("landing.ctaPrimary")}
-                    </Link>
-                </section>
-            </main>
-
-            <footer style={{ borderTop: "1px solid rgba(212,175,55,0.1)", padding: "24px 0" }}>
-                <p style={{ fontSize: "12px", color: "#52525b", textAlign: "center" }}>
-                    {t("landing.footer")}
-                </p>
-            </footer>
-        </div>
-    );
+            <div className="hero-proof">
+              <span>
+                01 / {copy("Price intelligence", "Inteligência de preços")}
+              </span>
+              <span>02 / {copy("Store inventory", "Estoque da loja")}</span>
+            </div>
+          </div>
+          <div
+            className="landing-visual"
+            aria-label={copy(
+              "Price intelligence and organized stock",
+              "Inteligência de preços e estoque organizado",
+            )}
+          >
+            <span className="visual-top">THE ART OF A BETTER MOVE.</span>
+            <div className="visual-circles" />
+            <div className="editorial-card card-one">
+              <span>01 / OBSERVE</span>
+              <Icon name="charts" size={76} />
+              <strong>{copy("See the pattern.", "Veja o padrão.")}</strong>
+              <small>
+                {copy(
+                  "A price is a moment. History is context.",
+                  "Preço é um momento. Histórico é contexto.",
+                )}
+              </small>
+            </div>
+            <div className="editorial-card card-two">
+              <span>02 / ORGANIZE</span>
+              <Icon name="inventory" size={60} />
+              <strong>{copy("Every card counts.", "Cada carta conta.")}</strong>
+              <small>CONDITION / LANGUAGE / FINISH</small>
+            </div>
+            <span className="visual-bottom">
+              MAGIC: THE GATHERING <span>↗</span>
+            </span>
+          </div>
+        </section>
+        <section className="landing-features" id="perspective">
+          {[
+            [
+              "insights",
+              copy("Look beyond today’s price.", "Olhe além do preço de hoje."),
+              copy(
+                "Find prices near observed lows and explore a buying shortlist with clear, transparent criteria.",
+                "Encontre preços perto da mínima e explore uma lista de compras com critérios transparentes.",
+              ),
+            ],
+            [
+              "charts",
+              copy(
+                "Catch the meaningful moves.",
+                "Acompanhe os movimentos relevantes.",
+              ),
+              copy(
+                "Spot sudden daily spikes and drops. Open the recorded history to understand what changed.",
+                "Identifique altas e quedas repentinas. Abra o histórico para entender o que mudou.",
+              ),
+            ],
+            [
+              "inventory",
+              copy("Keep the counter moving.", "Mantenha a loja em movimento."),
+              copy(
+                "Track stock, reserve units and import CSV snapshots with a preview and an audit trail.",
+                "Controle estoque, reserve unidades e importe saldos CSV com prévia e histórico de movimentos.",
+              ),
+            ],
+          ].map(([icon, title, body], i) => (
+            <article key={icon}>
+              <div>
+                <Icon name={icon} size={24} />
+                <span>0{i + 1}</span>
+              </div>
+              <h2>{title}</h2>
+              <p>{body}</p>
+            </article>
+          ))}
+        </section>
+      </main>
+      <footer className="landing-footer">
+        <Brand />
+        <p>
+          {copy(
+            "Market data by Scryfall · Independent store tooling.",
+            "Dados de mercado por Scryfall · Ferramentas independentes para lojas.",
+          )}
+        </p>
+      </footer>
+    </div>
+  );
 }
-
-export default Landing;
